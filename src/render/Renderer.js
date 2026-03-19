@@ -39,7 +39,7 @@ export class Renderer {
   }
 
   drawUI(game) {
-    const { score, highScore, state, player, perfectJumpTimer } = game;
+    const { score, highScore, state, player, perfectJumpTimer, comboCount, comboTier, immunityCount } = game;
     
     this.ctx.fillStyle = '#fff';
     this.ctx.font = '24px "Courier New", monospace';
@@ -50,6 +50,20 @@ export class Renderer {
     this.ctx.font = '16px "Courier New", monospace';
     this.ctx.fillStyle = '#888';
     this.ctx.fillText(`HI: ${Math.floor(highScore)}`, CANVAS_WIDTH - 30, 65);
+    
+    // Combo 显示（白色字体）
+    if (comboCount > 0) {
+      this.ctx.fillStyle = '#fff';
+      this.ctx.font = 'bold 18px "Courier New", monospace';
+      this.ctx.fillText(`x${comboCount}`, CANVAS_WIDTH - 30, 90);
+    }
+    
+    // 免疫护盾显示
+    if (immunityCount > 0) {
+      this.ctx.fillStyle = '#0ff';
+      this.ctx.font = 'bold 20px "Courier New", monospace';
+      this.ctx.fillText(`♦${immunityCount}`, CANVAS_WIDTH - 30, 115);
+    }
     
     // 完美跳跃提示 - 显示在玩家头顶
     if (perfectJumpTimer > 0) {

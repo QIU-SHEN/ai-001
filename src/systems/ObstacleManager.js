@@ -54,10 +54,11 @@ export class ObstacleManager {
     
     this.spawnTimer -= timeScale;
     
-    // Update obstacles
+    // Update obstacles (应用滑行速度加成)
+    const slideBoost = this.game.getSlideBoost();
     for (let i = this.obstacles.length - 1; i >= 0; i--) {
       const obs = this.obstacles[i];
-      obs.update(this.game.currentSpeed, timeScale);
+      obs.update(this.game.currentSpeed * slideBoost, timeScale);
       
       if (obs.x + obs.width < 0) {
         this.obstacles.splice(i, 1);

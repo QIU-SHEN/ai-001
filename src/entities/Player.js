@@ -20,11 +20,13 @@ export class Player {
     this.vy = 0;
     
     this.isGrounded = true;
+    this.wasGrounded = true; // 上一帧是否在地面上（用于落地检测）
     this.isSliding = false;
     this.slideTimer = 0;
     this.slideDuration = 45;
     
     this.jumpCount = 0;
+    this.lastJumpCount = 0; // 记录起跳前的跳跃次数
     this.canCoyote = false;
     this.coyoteTimer = 0;
     this.bufferTimer = 0;
@@ -45,6 +47,7 @@ export class Player {
       this.isGrounded = false;
       this.canCoyote = false;
       this.jumpCount++;
+      this.lastJumpCount = this.jumpCount; // 记录跳跃次数用于落地检测
       
       // Cancel slide on jump
       if (this.isSliding) {
@@ -116,12 +119,31 @@ export class Player {
     this.vy += gravity * timeScale;
     this.y += this.vy * timeScale;
     
+    // 记录上一帧的地面状态（用于落地检测）
+    this.wasGrounded = this.isGrounded;
+    
     // Ground collision
     if (this.y >= GROUND_Y - this.height) {
       this.y = GROUND_Y - this.height;
       this.vy = 0;
       this.isGrounded = true;
+      
+      // 落地检测 - 如果上一帧不在地面，这一帧在地面上
+      if (!this.wasGrounded) {
+        const isDoubleJumpLanding = this.lastJumpCount >= 2;
+        this.game.particles.spawnLandDust(
+          this.x + this.width / 2, 
+          this.y + this.height,
+          isDoubleJumpLanding
+        );
+        // 二段跳落地触发屏幕震动
+        if (isDoubleJumpLanding) {
+          this.game.triggerShake(3);
+        }
+      }
+      
       this.jumpCount = 0;
+      this.lastJumpCount = 0;
       
       // Try buffered jump
       if (this.bufferTimer > 0) {
@@ -174,6 +196,17 @@ export class Player {
     // Draw trail
     this.trail.draw(ctx, this.game.currentSpeed, !this.isGrounded);
     
+    ctx.save();
+    
+    // 有护盾时倾斜10度表示冲锋状态
+    if (this.game.immunityCount > 0) {
+      const centerX = this.x + this.width / 2;
+      const centerY = this.y + this.height / 2;
+      ctx.translate(centerX, centerY);
+      ctx.rotate(-10 * Math.PI / 180); // 逆时针倾斜10度
+      ctx.translate(-centerX, -centerY);
+    }
+    
     // Draw player (minimalist style)
     ctx.fillStyle = '#fff';
     ctx.fillRect(this.x, this.y, this.width, this.height);
@@ -187,6 +220,8 @@ export class Player {
       ctx.fillStyle = '#fff';
       ctx.fillRect(this.x - 6, this.y, 4, this.height);
     }
+    
+    ctx.restore();
   }
   
   getBounds() {

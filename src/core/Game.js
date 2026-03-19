@@ -3,7 +3,8 @@
 // ============================================
 import { 
   START_SPEED, BASE_SPEED, MAX_SPEED,
-  lerp, easeOutQuad
+  lerp, easeOutQuad,
+  SLIDE_BOOST_MIN, SLIDE_BOOST_MAX, COMBO_THRESHOLD, COMBO_IMMUNITY
 } from './Constants.js';
 import { Input } from './Input.js';
 import { Time } from './Time.js';
@@ -35,6 +36,16 @@ export class Game {
     this.perfectJumpTimer = 0; // 完美跳跃显示计时器
     this.lastPerfectJump = false; // 上一次跳跃是否为完美跳跃
     
+    // Combo 系统
+    this.comboCount = 0; // 连续躲避计数
+    this.comboTier = 0; // Combo 等级（每10次增加1）
+    this.immunityCount = 0; // 剩余免疫次数
+    this.lastObstaclePassed = null; // 上一次通过的障碍
+    
+    // 屏幕震动
+    this.shakeTimer = 0; // 震动计时器
+    this.shakeIntensity = 0; // 震动强度
+    
     this.loop = this.loop.bind(this);
   }
   
@@ -48,6 +59,14 @@ export class Game {
     this.particles.clear();
     this.time.reset();
     this.input.reset();
+    
+    // 重置 combo 系统
+    this.comboCount = 0;
+    this.comboTier = 0;
+    this.immunityCount = 0;
+    this.lastObstaclePassed = null;
+    this.shakeTimer = 0;
+    this.shakeIntensity = 0;
   }
   
   gameOver() {
@@ -76,11 +95,45 @@ export class Game {
     // 奖励分数
     this.score += 50;
     this.perfectJumpTimer = 60; // 显示1秒
+    // Near Miss 慢动作效果
+    this.time.triggerNearMiss();
     // 增强粒子效果
     this.particles.spawnPerfectExplosion(
       this.player.x + this.player.width / 2,
       this.player.y + this.player.height / 2
     );
+    // 增加 combo 计数
+    this.comboCount++;
+    this.checkComboReward();
+  }
+  
+  checkComboReward() {
+    const newTier = Math.floor(this.comboCount / COMBO_THRESHOLD);
+    if (newTier > this.comboTier) {
+      // 升级奖励
+      this.comboTier = newTier;
+      this.immunityCount += COMBO_IMMUNITY;
+      // 增强粒子效果
+      this.particles.spawnComboExplosion(
+        this.player.x + this.player.width / 2,
+        this.player.y + this.player.height / 2,
+        this.comboTier
+      );
+    }
+  }
+  
+  // 获取滑行时的速度加成
+  getSlideBoost() {
+    if (!this.player.isSliding) return 1;
+    // 根据 combo 等级增加速度
+    const boost = SLIDE_BOOST_MIN + (this.comboTier * 0.01);
+    return Math.min(boost, SLIDE_BOOST_MAX);
+  }
+  
+  // 触发屏幕震动
+  triggerShake(intensity) {
+    this.shakeIntensity = intensity;
+    this.shakeTimer = 10; // 约0.17秒
   }
   
   loadHighScore() {
@@ -106,6 +159,11 @@ export class Game {
     // 更新完美跳跃显示计时器
     if (this.perfectJumpTimer > 0) {
       this.perfectJumpTimer -= timeScale;
+    }
+    
+    // 更新屏幕震动
+    if (this.shakeTimer > 0) {
+      this.shakeTimer -= timeScale;
     }
     
     if (this.state === 'running') {
@@ -134,6 +192,11 @@ export class Game {
       for (const obs of this.obstacles.obstacles) {
         const obsBounds = obs.getBounds();
         
+        // 标记已通过的障碍
+        if (obs.x + obs.width < this.player.x && !obs.passed) {
+          obs.passed = true;
+        }
+        
         // 检查碰撞
         if (
           playerBounds.x < obsBounds.x + obsBounds.width &&
@@ -141,6 +204,17 @@ export class Game {
           playerBounds.y < obsBounds.y + obsBounds.height &&
           playerBounds.y + playerBounds.height > obsBounds.y
         ) {
+          // 有免疫次数时抵消一次碰撞
+          if (this.immunityCount > 0) {
+            this.immunityCount--;
+            this.particles.spawnShieldBreak(
+              this.player.x + this.player.width / 2,
+              this.player.y + this.player.height / 2
+            );
+            // 销毁该障碍，继续游戏
+            obs.x = -1000;
+            continue;
+          }
           this.triggerHit();
           this.gameOver();
         }
@@ -157,8 +231,19 @@ export class Game {
   }
   
   draw() {
+    // 计算屏幕震动偏移
+    let shakeX = 0, shakeY = 0;
+    if (this.shakeTimer > 0) {
+      shakeX = (Math.random() - 0.5) * this.shakeIntensity;
+      shakeY = (Math.random() - 0.5) * this.shakeIntensity;
+    }
+    
     // Clear
     this.renderer.clear();
+    
+    // 应用屏幕震动
+    this.renderer.ctx.save();
+    this.renderer.ctx.translate(shakeX, shakeY);
     
     // Draw ground
     this.renderer.drawGround();
@@ -168,7 +253,10 @@ export class Game {
     this.obstacles.draw(this.renderer.ctx);
     this.particles.draw(this.renderer.ctx);
     
-    // Draw UI
+    // 恢复屏幕震动
+    this.renderer.ctx.restore();
+    
+    // Draw UI (UI不受震动影响)
     this.renderer.drawUI(this);
   }
   

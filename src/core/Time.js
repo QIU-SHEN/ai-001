@@ -1,12 +1,13 @@
 // ============================================
 // Time - 处理时间缩放、帧率等
 // ============================================
-import { HIT_STOP, SLOW_MO_DURATION } from './Constants.js';
+import { HIT_STOP, SLOW_MO_DURATION, NEAR_MISS_SLOWMO, NEAR_MISS_SPEED } from './Constants.js';
 
 export class Time {
   constructor() {
     this.hitStopTimer = 0;
     this.slowMoTimer = 0;
+    this.nearMissTimer = 0;
     this.deltaTime = 0;
     this.lastTime = 0;
   }
@@ -25,6 +26,10 @@ export class Time {
       this.hitStopTimer--;
       return 0;
     }
+    if (this.nearMissTimer > 0) {
+      this.nearMissTimer--;
+      return NEAR_MISS_SPEED;
+    }
     if (this.slowMoTimer > 0) {
       this.slowMoTimer--;
       return 0.3;
@@ -37,9 +42,14 @@ export class Time {
     this.slowMoTimer = SLOW_MO_DURATION;
   }
 
+  triggerNearMiss() {
+    this.nearMissTimer = NEAR_MISS_SLOWMO;
+  }
+
   reset() {
     this.hitStopTimer = 0;
     this.slowMoTimer = 0;
+    this.nearMissTimer = 0;
     this.deltaTime = 0;
     this.lastTime = 0;
   }
