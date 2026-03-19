@@ -175,17 +175,26 @@ export class Player {
     }
     
     // Handle input
+    // 跳跃：触发式（按一下跳一下）
     if (input.jumpPressed) {
+      input.jumpPressed = false; // 立即消费跳跃信号，防止重复
       if (!this.jump()) {
         this.bufferJump();
       }
-      input.jumpPressed = false;
     }
     
-    if (input.slidePressed && !this.isSliding) {
-      this.startSlide();
-    } else if (!input.slidePressed && this.isSliding) {
+    // 滑步：按一下自动滑步0.8秒
+    if (input.slidePressed && input.slideTimer > 0) {
+      if (!this.isSliding) {
+        this.startSlide();
+      }
+      // 每帧减少滑步计时
+      input.slideTimer -= timeScale;
+    }
+    // 滑步计时结束，自动停止
+    if (this.isSliding && input.slideTimer <= 0) {
       this.stopSlide();
+      input.slidePressed = false;
     }
     
     // Update trail

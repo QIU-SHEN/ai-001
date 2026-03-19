@@ -4,8 +4,17 @@
 export class Input {
   constructor(canvas) {
     this.canvas = canvas;
+    
+    // 跳跃：触发式（按一下跳一下）
     this.jumpPressed = false;
+    this.jumpTriggered = false; // 标记是否已处理此次跳跃
+    this.jumpKeyDown = false; // 标记按键是否正被按住（防止keydown重复触发）
+    
+    // 滑步：按一下自动滑步一段时间
     this.slidePressed = false;
+    this.slideDuration = 48; // 滑步持续帧数（约0.8秒 @60fps）
+    this.slideTimer = 0; // 当前滑步剩余时间
+    this.slideKeyDown = false; // 标记按键是否正被按住
     
     // 编辑器按键
     this.editorPlaceLow = false;      // 1
@@ -23,13 +32,26 @@ export class Input {
 
   bindInput() {
     window.addEventListener('keydown', (e) => {
+      // 跳跃：只在按键首次按下时触发（防止按住连跳）
       if (e.code === 'Space' || e.code === 'ArrowUp') {
         e.preventDefault();
-        this.jumpPressed = true;
+        // 使用 jumpKeyDown 防止 keydown 重复触发
+        if (!this.jumpKeyDown) {
+          this.jumpKeyDown = true;
+          this.jumpPressed = true;
+          this.jumpTriggered = false;
+        }
       }
+      
+      // 滑步：按一下开始滑步，计时结束后自动恢复
       if (e.code === 'ArrowDown' || e.code === 'KeyS') {
         e.preventDefault();
-        this.slidePressed = true;
+        // 使用 slideKeyDown 防止 keydown 重复触发
+        if (!this.slideKeyDown) {
+          this.slideKeyDown = true;
+          this.slidePressed = true;
+          this.slideTimer = this.slideDuration;
+        }
       }
       
       // 编辑器按键（仅触发一次）
@@ -63,11 +85,15 @@ export class Input {
     });
 
     window.addEventListener('keyup', (e) => {
+      // 跳跃：松开按键后重置 keyDown 标志
       if (e.code === 'Space' || e.code === 'ArrowUp') {
+        this.jumpKeyDown = false;
         this.jumpPressed = false;
+        this.jumpTriggered = false;
       }
+      // 滑步：松开按键不影响，由timer自动结束
       if (e.code === 'ArrowDown' || e.code === 'KeyS') {
-        this.slidePressed = false;
+        this.slideKeyDown = false;
       }
     });
 
@@ -79,7 +105,11 @@ export class Input {
 
   reset() {
     this.jumpPressed = false;
+    this.jumpTriggered = false;
+    this.jumpKeyDown = false;
     this.slidePressed = false;
+    this.slideTimer = 0;
+    this.slideKeyDown = false;
     this.editorPlaceLow = false;
     this.editorPlaceAir = false;
     this.editorClear = false;
