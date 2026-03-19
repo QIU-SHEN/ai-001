@@ -4,7 +4,8 @@
 import { 
   START_SPEED, BASE_SPEED, MAX_SPEED,
   lerp, easeOutQuad,
-  SLIDE_BOOST_MIN, SLIDE_BOOST_MAX, COMBO_THRESHOLD, COMBO_IMMUNITY
+  SLIDE_BOOST_MIN, SLIDE_BOOST_MAX, COMBO_THRESHOLD, COMBO_IMMUNITY,
+  GAME_MODE
 } from './Constants.js';
 import { Input } from './Input.js';
 import { Time } from './Time.js';
@@ -12,7 +13,9 @@ import { SoundSystem } from '../systems/SoundSystem.js';
 import { ParticleSystem } from '../systems/ParticleSystem.js';
 import { Player } from '../entities/Player.js';
 import { ObstacleManager } from '../systems/ObstacleManager.js';
+import { Obstacle } from '../entities/Obstacle.js';
 import { Renderer } from '../render/Renderer.js';
+import { LevelSystem } from '../systems/LevelSystem.js';
 
 export class Game {
   constructor(canvas) {
@@ -22,7 +25,7 @@ export class Game {
     this.input = new Input(canvas);
     this.time = new Time();
     
-    this.state = 'start'; // start, running, gameover
+    this.state = 'start'; // start, running, gameover, win
     this.score = 0;
     this.highScore = this.loadHighScore();
     this.currentSpeed = START_SPEED;
@@ -32,6 +35,7 @@ export class Game {
     this.particles = new ParticleSystem();
     this.player = new Player(this);
     this.obstacles = new ObstacleManager(this);
+    this.levelSystem = new LevelSystem(this);
     
     this.perfectJumpTimer = 0; // 完美跳跃显示计时器
     this.lastPerfectJump = false; // 上一次跳跃是否为完美跳跃
@@ -49,7 +53,7 @@ export class Game {
     this.loop = this.loop.bind(this);
   }
   
-  start() {
+  start(mode = null) {
     this.audio.init();
     this.state = 'running';
     this.score = 0;
@@ -67,6 +71,12 @@ export class Game {
     this.lastObstaclePassed = null;
     this.shakeTimer = 0;
     this.shakeIntensity = 0;
+    
+    // 关卡系统
+    if (mode) {
+      this.levelSystem.setMode(mode);
+    }
+    this.levelSystem.onGameStart();
   }
   
   gameOver() {
@@ -76,11 +86,20 @@ export class Game {
       this.player.x + this.player.width / 2,
       this.player.y + this.player.height / 2
     );
-    // Save high score
-    if (this.score > this.highScore) {
+    // Save high score (only in endless mode)
+    if (this.levelSystem.mode === GAME_MODE.ENDLESS && this.score > this.highScore) {
       this.highScore = this.score;
       this.saveHighScore(this.score);
     }
+  }
+  
+  levelComplete() {
+    this.state = 'win';
+    this.particles.spawnComboExplosion(
+      this.player.x + this.player.width / 2,
+      this.player.y + this.player.height / 2,
+      3
+    );
   }
   
   getTimeScale() {
@@ -166,21 +185,49 @@ export class Game {
       this.shakeTimer -= timeScale;
     }
     
+    // 编辑器模式输入处理
+    if (this.levelSystem.isRecording) {
+      if (this.input.editorPlaceLow) {
+        this.levelSystem.recordObstacle('low');
+        // 即时生成在玩家前方，方便测试
+        this.obstacles.obstacles.push(new Obstacle('low', this.player.x + 500));
+        this.input.editorPlaceLow = false;
+      }
+      if (this.input.editorPlaceAir) {
+        this.levelSystem.recordObstacle('air');
+        // 即时生成在玩家前方，方便测试
+        this.obstacles.obstacles.push(new Obstacle('air', this.player.x + 500));
+        this.input.editorPlaceAir = false;
+      }
+      if (this.input.editorClear) {
+        this.levelSystem.clearRecording();
+        // 清空当前障碍
+        this.obstacles.reset();
+        this.input.editorClear = false;
+      }
+      if (this.input.editorExport) {
+        this.levelSystem.exportLevel();
+        this.input.editorExport = false;
+      }
+    }
+    
     if (this.state === 'running') {
-      // Calculate target speed based on phase
-      const phase = this.obstacles.getCurrentPhase();
-      const targetMult = phase.speedMult;
-      
-      // Smooth speed transition
-      this.targetSpeed = lerp(BASE_SPEED * 0.6, BASE_SPEED * targetMult, 
-        easeOutQuad(Math.min(this.score / 500, 1)));
-      this.currentSpeed = lerp(this.currentSpeed, this.targetSpeed, 0.02);
+      // 无尽模式：根据阶段计算速度
+      if (this.levelSystem.mode === GAME_MODE.ENDLESS) {
+        const phase = this.obstacles.getCurrentPhase();
+        const targetMult = phase.speedMult;
+        this.targetSpeed = lerp(BASE_SPEED * 0.6, BASE_SPEED * targetMult, 
+          easeOutQuad(Math.min(this.score / 500, 1)));
+        this.currentSpeed = lerp(this.currentSpeed, this.targetSpeed, 0.02);
+        // Update score
+        this.score += this.currentSpeed * 0.1;
+      } else {
+        // 关卡模式：固定速度
+        this.currentSpeed = BASE_SPEED;
+      }
       
       // Update audio pitch
       this.audio.speedPitch = 0.9 + (this.currentSpeed / MAX_SPEED) * 0.3;
-      
-      // Update score
-      this.score += this.currentSpeed * 0.1;
       
       // Update entities
       this.player.update(this.input, timeScale);
@@ -189,8 +236,15 @@ export class Game {
       
       // Check collisions & perfect jumps
       const playerBounds = this.player.getBounds();
+      let activeObstacles = 0;
+      
       for (const obs of this.obstacles.obstacles) {
         const obsBounds = obs.getBounds();
+        
+        // 统计仍在屏幕内的障碍
+        if (obs.x + obs.width > 0) {
+          activeObstacles++;
+        }
         
         // 标记已通过的障碍
         if (obs.x + obs.width < this.player.x && !obs.passed) {
@@ -219,15 +273,64 @@ export class Game {
           this.gameOver();
         }
       }
+      
+      // 关卡模式：检查胜利条件
+      if (this.levelSystem.mode === GAME_MODE.LEVEL) {
+        const allCleared = this.levelSystem.allSpawned && activeObstacles === 0;
+        if (allCleared) {
+          this.levelComplete();
+        }
+      }
     }
     
     // Handle input for state changes
     if (this.input.jumpPressed) {
-      if (this.state === 'start' || this.state === 'gameover') {
+      if (this.state === 'gameover' || this.state === 'win') {
         this.start();
       }
       this.input.jumpPressed = false;
     }
+    
+    // ESC 返回开始菜单
+    if (this.input.backToMenu) {
+      if (this.state === 'gameover' || this.state === 'win') {
+        this.state = 'start';
+        this.levelSystem.setMode(GAME_MODE.ENDLESS);
+      }
+      this.input.backToMenu = false;
+    }
+    
+    // 开始菜单模式选择
+    if (this.state === 'start') {
+      if (this.input.selectEndless) { // E 键 - 无尽模式
+        this.start(GAME_MODE.ENDLESS);
+        this.input.selectEndless = false;
+      }
+      if (this.input.selectLevel) { // L 键 - 关卡模式
+        this.loadExampleLevel();
+        this.start(GAME_MODE.LEVEL);
+        this.input.selectLevel = false;
+      }
+      if (this.input.editorClear) { // R 键 - 录制模式
+        this.levelSystem.startRecording();
+        this.start(GAME_MODE.EDITOR);
+        this.input.editorClear = false;
+      }
+    }
+  }
+  
+  // 加载示例关卡
+  loadExampleLevel() {
+    const exampleLevel = [
+      { time: 1500, type: 'low' },
+      { time: 2800, type: 'low' },
+      { time: 4000, type: 'air' },
+      { time: 5200, type: 'low' },
+      { time: 6500, type: 'air' },
+      { time: 7800, type: 'low' },
+      { time: 9000, type: 'low' }
+    ];
+    this.levelSystem.loadLevel(exampleLevel);
   }
   
   draw() {

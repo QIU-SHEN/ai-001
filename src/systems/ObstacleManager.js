@@ -1,7 +1,7 @@
 // ============================================
 // Obstacle Manager (Pattern-based)
 // ============================================
-import { CANVAS_WIDTH, PHASES } from '../core/Constants.js';
+import { CANVAS_WIDTH, PHASES, GAME_MODE } from '../core/Constants.js';
 import { Obstacle } from '../entities/Obstacle.js';
 
 export class ObstacleManager {
@@ -32,27 +32,45 @@ export class ObstacleManager {
   }
   
   update(timeScale) {
-    const phase = this.getCurrentPhase();
+    const { levelSystem } = this.game;
     
-    // Continue current pattern
-    if (this.currentPattern && this.patternIndex < this.currentPattern.length) {
-      const lastObstacle = this.obstacles[this.obstacles.length - 1];
-      const minSpacing = this.getMinDistance() * 0.6;
-      
-      if (!lastObstacle || (CANVAS_WIDTH + 50 - lastObstacle.x >= minSpacing)) {
-        const type = this.currentPattern[this.patternIndex];
-        this.obstacles.push(new Obstacle(type, CANVAS_WIDTH + 50));
-        this.patternIndex++;
-      }
-    } else if (this.spawnTimer <= 0) {
-      // Start new pattern
-      const patterns = phase.patterns;
-      this.currentPattern = patterns[Math.floor(Math.random() * patterns.length)];
-      this.patternIndex = 0;
-      this.spawnTimer = this.getSpawnInterval();
+    // 录制模式：不自动生成障碍，只显示玩家手动放置的
+    if (levelSystem.mode === GAME_MODE.EDITOR) {
+      // 只更新已有障碍位置，不生成新障碍
     }
-    
-    this.spawnTimer -= timeScale;
+    // 关卡模式：按时间驱动生成障碍
+    else if (levelSystem.mode === GAME_MODE.LEVEL) {
+      const levelTime = levelSystem.getLevelTime();
+      const nextObstacle = levelSystem.getNextObstacle();
+      
+      if (nextObstacle && levelTime >= nextObstacle.time) {
+        this.obstacles.push(new Obstacle(nextObstacle.type, CANVAS_WIDTH + 50));
+        levelSystem.advance();
+      }
+    } else {
+      // 无尽模式：使用原有的 pattern 系统
+      const phase = this.getCurrentPhase();
+      
+      // Continue current pattern
+      if (this.currentPattern && this.patternIndex < this.currentPattern.length) {
+        const lastObstacle = this.obstacles[this.obstacles.length - 1];
+        const minSpacing = this.getMinDistance() * 0.6;
+        
+        if (!lastObstacle || (CANVAS_WIDTH + 50 - lastObstacle.x >= minSpacing)) {
+          const type = this.currentPattern[this.patternIndex];
+          this.obstacles.push(new Obstacle(type, CANVAS_WIDTH + 50));
+          this.patternIndex++;
+        }
+      } else if (this.spawnTimer <= 0) {
+        // Start new pattern
+        const patterns = phase.patterns;
+        this.currentPattern = patterns[Math.floor(Math.random() * patterns.length)];
+        this.patternIndex = 0;
+        this.spawnTimer = this.getSpawnInterval();
+      }
+      
+      this.spawnTimer -= timeScale;
+    }
     
     // Update obstacles (应用滑行速度加成)
     const slideBoost = this.game.getSlideBoost();

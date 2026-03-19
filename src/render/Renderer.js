@@ -84,11 +84,19 @@ export class Renderer {
       this.ctx.fillStyle = '#fff';
       this.ctx.font = 'bold 48px "Courier New", monospace';
       this.ctx.textAlign = 'center';
-      this.ctx.fillText('RUNNER', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 - 40);
+      this.ctx.fillText('RUNNER', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 - 80);
       
       this.ctx.font = '16px "Courier New", monospace';
-      this.ctx.fillText('SPACE: Jump (Double Jump) | DOWN: Slide', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 + 20);
-      this.ctx.fillText('Press SPACE to Start', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 + 50);
+      this.ctx.fillText('SPACE: 跳跃 (二段跳) | DOWN: 滑铲', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 - 20);
+      
+      // 模式选择
+      this.ctx.fillStyle = '#888';
+      this.ctx.fillText('选择模式:', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 + 20);
+      
+      this.ctx.fillStyle = '#fff';
+      this.ctx.fillText('E - 无尽模式', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 + 50);
+      this.ctx.fillText('L - 关卡模式', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 + 80);
+      this.ctx.fillText('R - 录制关卡', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 + 110);
     } else if (state === 'gameover') {
       this.ctx.fillStyle = 'rgba(0,0,0,0.7)';
       this.ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
@@ -99,17 +107,70 @@ export class Renderer {
       this.ctx.fillText('GAME OVER', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 - 60);
       
       const s = Math.floor(score);
-      let rating = 'Needs Improvement';
-      if (s >= 1000) rating = 'Elite';
-      else if (s >= 500) rating = 'Strong';
-      else if (s >= 200) rating = 'Decent';
+      let rating = '还需努力';
+      if (s >= 1000) rating = '精英';
+      else if (s >= 500) rating = '很强';
+      else if (s >= 200) rating = '不错';
       
       this.ctx.font = '24px "Courier New", monospace';
-      this.ctx.fillText(`Score: ${s}`, CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2);
+      this.ctx.fillText(`得分: ${s}`, CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2);
       this.ctx.fillText(rating, CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 + 35);
       
       this.ctx.font = '16px "Courier New", monospace';
-      this.ctx.fillText('Press SPACE to Restart', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 + 80);
+      this.ctx.fillText('空格: 重新开始 | ESC: 返回菜单', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 + 80);
+    } else if (state === 'win') {
+      // 关卡胜利画面
+      this.ctx.fillStyle = 'rgba(0,0,0,0.7)';
+      this.ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+      
+      this.ctx.fillStyle = '#fff';
+      this.ctx.font = 'bold 48px "Courier New", monospace';
+      this.ctx.textAlign = 'center';
+      this.ctx.fillText('LEVEL CLEAR', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 - 40);
+      
+      this.ctx.font = '24px "Courier New", monospace';
+      this.ctx.fillText('关卡完成', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 + 10);
+      
+      this.ctx.font = '16px "Courier New", monospace';
+      this.ctx.fillText('空格: 重新开始 | ESC: 返回菜单', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 + 50);
     }
+    
+    // 编辑器模式 UI
+    if (game.levelSystem?.isRecording) {
+      this.drawEditorUI(game);
+    }
+  }
+  
+  drawEditorUI(game) {
+    const { levelSystem } = game;
+    
+    // 编辑器背景条
+    this.ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+    this.ctx.fillRect(10, 10, 280, 150);
+    
+    // 标题
+    this.ctx.fillStyle = '#fff';
+    this.ctx.font = 'bold 16px "Courier New", monospace';
+    this.ctx.textAlign = 'left';
+    this.ctx.fillText('[EDITOR] 关卡编辑器', 20, 30);
+    
+    // 按键说明
+    this.ctx.fillStyle = '#aaa';
+    this.ctx.font = '14px "Courier New", monospace';
+    this.ctx.fillText('1: 放置 low (跳跃)', 20, 55);
+    this.ctx.fillText('2: 放置 air (滑行)', 20, 75);
+    this.ctx.fillText('R: 清空 | P: 输出 JSON', 20, 95);
+    this.ctx.fillText('(障碍生成在玩家前方)', 20, 115);
+    
+    // 已记录数量
+    const count = levelSystem.recordedData.length;
+    this.ctx.fillStyle = '#fff';
+    this.ctx.font = 'bold 14px "Courier New", monospace';
+    this.ctx.fillText(`已记录: ${count} 个障碍`, 20, 135);
+    
+    // 录制时间
+    const time = Math.floor(levelSystem.getLevelTime() / 100) / 10;
+    this.ctx.fillStyle = '#aaa';
+    this.ctx.fillText(`时间: ${time.toFixed(1)}s`, 20, 155);
   }
 }
