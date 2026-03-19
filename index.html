@@ -26,10 +26,290 @@
       border: 2px solid #333;
       image-rendering: pixelated;
     }
+    
+    /* 编辑器 UI */
+    #editorUI {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      display: none;
+    }
+    
+    #editorUI.active {
+      display: block;
+    }
+    
+    #editorUI > * {
+      pointer-events: auto;
+    }
+    
+    /* 时间轴 */
+    #timelineContainer {
+      position: absolute;
+      bottom: 150px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 900px;
+      height: 120px;
+      background: rgba(0, 0, 0, 0.9);
+      border: 1px solid #444;
+      border-radius: 4px;
+      overflow: hidden;
+    }
+    
+    #timelineTrack {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      cursor: crosshair;
+    }
+    
+    /* 时间刻度 */
+    .time-grid {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+    }
+    
+    .time-grid-line {
+      position: absolute;
+      top: 0;
+      width: 1px;
+      height: 100%;
+      background: #333;
+    }
+    
+    .time-grid-label {
+      position: absolute;
+      top: 2px;
+      font-size: 10px;
+      color: #666;
+      font-family: 'Courier New', monospace;
+    }
+    
+    /* 事件块 */
+    .event-block {
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 12px;
+      height: 40px;
+      border-radius: 2px;
+      cursor: grab;
+      user-select: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 8px;
+      color: #000;
+      font-weight: bold;
+    }
+    
+    .event-block:hover {
+      transform: translateY(-50%) scale(1.1);
+    }
+    
+    .event-block.selected {
+      box-shadow: 0 0 0 2px #0f0;
+      z-index: 10;
+    }
+    
+    .event-block.low {
+      background: #fff;
+    }
+    
+    .event-block.air {
+      background: #888;
+    }
+    
+    .event-block.dragging {
+      cursor: grabbing;
+      opacity: 0.8;
+    }
+    
+    /* 播放指针 */
+    #playhead {
+      position: absolute;
+      top: 0;
+      width: 2px;
+      height: 100%;
+      background: #0ff;
+      pointer-events: none;
+      z-index: 5;
+    }
+    
+    /* 控制面板 */
+    #editorControls {
+      position: absolute;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      gap: 10px;
+      background: rgba(0, 0, 0, 0.9);
+      padding: 10px 20px;
+      border-radius: 4px;
+      border: 1px solid #444;
+    }
+    
+    #editorControls button {
+      background: #333;
+      border: 1px solid #555;
+      color: #fff;
+      padding: 8px 16px;
+      font-family: 'Courier New', monospace;
+      cursor: pointer;
+      font-size: 12px;
+    }
+    
+    #editorControls button:hover {
+      background: #444;
+    }
+    
+    #editorControls button:active {
+      background: #555;
+    }
+    
+    #editorControls button.primary {
+      background: #0a0;
+      border-color: #0f0;
+    }
+    
+    #editorControls button.primary:hover {
+      background: #0c0;
+    }
+    
+    /* Inspector 面板 */
+    #inspector {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      width: 200px;
+      background: rgba(0, 0, 0, 0.9);
+      border: 1px solid #444;
+      border-radius: 4px;
+      padding: 15px;
+      color: #fff;
+      font-family: 'Courier New', monospace;
+    }
+    
+    #inspector h3 {
+      font-size: 14px;
+      margin-bottom: 15px;
+      border-bottom: 1px solid #444;
+      padding-bottom: 5px;
+    }
+    
+    #inspector .field {
+      margin-bottom: 10px;
+    }
+    
+    #inspector label {
+      display: block;
+      font-size: 11px;
+      color: #888;
+      margin-bottom: 3px;
+    }
+    
+    #inspector input,
+    #inspector select {
+      width: 100%;
+      background: #222;
+      border: 1px solid #444;
+      color: #fff;
+      padding: 5px;
+      font-family: 'Courier New', monospace;
+      font-size: 12px;
+    }
+    
+    #inspector input:disabled {
+      background: #111;
+      color: #666;
+    }
+    
+    /* 信息面板 */
+    #editorInfo {
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      background: rgba(0, 0, 0, 0.9);
+      border: 1px solid #444;
+      border-radius: 4px;
+      padding: 15px;
+      color: #fff;
+      font-family: 'Courier New', monospace;
+      font-size: 12px;
+    }
+    
+    #editorInfo h3 {
+      font-size: 14px;
+      margin-bottom: 10px;
+    }
+    
+    #editorInfo .info-row {
+      margin-bottom: 5px;
+      color: #888;
+    }
+    
+    #editorInfo .info-row span {
+      color: #fff;
+    }
   </style>
 </head>
 <body>
   <canvas id="gameCanvas" width="960" height="540"></canvas>
+  
+  <!-- 编辑器 UI -->
+  <div id="editorUI">
+    <div id="editorInfo">
+      <h3>[EDITOR]</h3>
+      <div class="info-row">Duration: <span id="edDuration">10s</span></div>
+      <div class="info-row">Events: <span id="edEventCount">0</span></div>
+      <div class="info-row">Scale: <span id="edScale">100</span>px/s</div>
+    </div>
+    
+    <div id="inspector">
+      <h3>INSPECTOR</h3>
+      <div class="field">
+        <label>Type</label>
+        <select id="inspType" disabled>
+          <option value="low">low</option>
+          <option value="air">air</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Time (ms)</label>
+        <input type="number" id="inspTime" disabled>
+      </div>
+      <div class="field">
+        <label>X Offset</label>
+        <input type="number" id="inspXOffset" disabled>
+      </div>
+    </div>
+    
+    <div id="timelineContainer">
+      <div id="timelineTrack">
+        <div class="time-grid" id="timeGrid"></div>
+        <div id="playhead"></div>
+      </div>
+    </div>
+    
+    <div id="editorControls">
+      <button id="btnPlay">▶ Play</button>
+      <button id="btnPause" style="display:none">⏸ Pause</button>
+      <button id="btnAddLow">+ low</button>
+      <button id="btnAddAir">+ air</button>
+      <button id="btnDelete">Delete</button>
+      <button id="btnExport" class="primary">Export JSON</button>
+      <button id="btnPlaytest" class="primary">Playtest</button>
+    </div>
+  </div>
   <script type="module" src="src/game.js"></script>
 </body>
 </html>

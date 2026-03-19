@@ -1,7 +1,7 @@
 // ============================================
-// Obstacle Manager (Pattern-based)
+// Obstacle Manager (Pattern-based for ENDLESS mode only)
 // ============================================
-import { CANVAS_WIDTH, PHASES, GAME_MODE } from '../core/Constants.js';
+import { CANVAS_WIDTH, PHASES } from '../core/Constants.js';
 import { Obstacle } from '../entities/Obstacle.js';
 
 export class ObstacleManager {
@@ -32,23 +32,8 @@ export class ObstacleManager {
   }
   
   update(timeScale) {
-    const { levelSystem } = this.game;
-    
-    // 录制模式：不自动生成障碍，只显示玩家手动放置的
-    if (levelSystem.mode === GAME_MODE.EDITOR) {
-      // 只更新已有障碍位置，不生成新障碍
-    }
-    // 关卡模式：按时间驱动生成障碍
-    else if (levelSystem.mode === GAME_MODE.LEVEL) {
-      const levelTime = levelSystem.getLevelTime();
-      const nextObstacle = levelSystem.getNextObstacle();
-      
-      if (nextObstacle && levelTime >= nextObstacle.time) {
-        this.obstacles.push(new Obstacle(nextObstacle.type, CANVAS_WIDTH + 50));
-        levelSystem.advance();
-      }
-    } else {
-      // 无尽模式：使用原有的 pattern 系统
+    // 只有无尽模式自动生成障碍
+    if (this.game.mode === 'endless') {
       const phase = this.getCurrentPhase();
       
       // Continue current pattern
@@ -72,7 +57,7 @@ export class ObstacleManager {
       this.spawnTimer -= timeScale;
     }
     
-    // Update obstacles (应用滑行速度加成)
+    // 更新障碍位置（所有模式）
     const slideBoost = this.game.getSlideBoost();
     for (let i = this.obstacles.length - 1; i >= 0; i--) {
       const obs = this.obstacles[i];

@@ -12,6 +12,8 @@ export class Input {
     this.editorPlaceAir = false;      // 2
     this.editorClear = false;         // R
     this.editorExport = false;        // P
+    this.editorDelete = false;        // Delete
+    this.editorTest = false;          // T
     this.selectEndless = false;       // E
     this.selectLevel = false;         // L
     this.backToMenu = false;          // ESC
@@ -42,6 +44,12 @@ export class Input {
       }
       if (e.code === 'KeyP') {
         this.editorExport = true;
+      }
+      if (e.code === 'Delete') {
+        this.editorDelete = true;
+      }
+      if (e.code === 'KeyT') {
+        this.editorTest = true;
       }
       if (e.code === 'KeyE') {
         this.selectEndless = true;
@@ -79,5 +87,7 @@ export class Input {
     this.selectEndless = false;
     this.selectLevel = false;
     this.backToMenu = false;
+    this.editorDelete = false;
+    this.editorTest = false;
   }
 }
