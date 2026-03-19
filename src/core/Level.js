@@ -20,7 +20,8 @@ export function createEmptyLevel(name = 'New Level', author = 'unknown') {
     config: {
       baseSpeed: 6,
       gravity: 1.2,
-      spawnOffset: 300
+      spawnOffset: 500,      // 生成提前量（像素）
+      preloadTime: 2000      // 预加载时间（毫秒）
     },
     timeline: []
   };

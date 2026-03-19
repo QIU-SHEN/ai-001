@@ -4,7 +4,8 @@
 import { 
   START_SPEED, BASE_SPEED, MAX_SPEED,
   lerp, easeOutQuad,
-  SLIDE_BOOST_MIN, SLIDE_BOOST_MAX, COMBO_THRESHOLD, COMBO_IMMUNITY
+  SLIDE_BOOST_MIN, SLIDE_BOOST_MAX, COMBO_THRESHOLD, CANVAS_WIDTH, CANVAS_HEIGHT,
+  COMBO_IMMUNITY
 } from './Constants.js';
 import { Input } from './Input.js';
 import { Time } from './Time.js';
@@ -102,6 +103,13 @@ export class Game {
     this.levelTime = 0;
     this.timelineIndex = 0;
     
+    // 清理关卡数据的 spawned 标记
+    if (this.currentLevel && this.currentLevel.timeline) {
+      this.currentLevel.timeline.forEach(item => {
+        item.spawned = false;
+      });
+    }
+    
     // 应用关卡配置
     if (this.currentLevel && this.currentLevel.config) {
       this.currentSpeed = this.currentLevel.config.baseSpeed || BASE_SPEED;
@@ -166,7 +174,7 @@ export class Game {
     );
   }
   
-  // ========== Timeline 驱动生成 ==========
+  // ========== Timeline 驱动生成（带预加载缓冲）==========
   
   processTimeline(deltaTime) {
     if (this.mode === GAME_MODE.ENDLESS) return; // 无尽模式不使用 timeline
@@ -174,32 +182,55 @@ export class Game {
     if (!this.currentLevel) return;
     
     const timeline = this.currentLevel.timeline;
+    const config = this.currentLevel.config;
     
-    // 按时间顺序生成障碍
+    // 计算预加载提前时间（根据速度和距离）
+    const spawnOffset = config.spawnOffset || 500; // 像素
+    const preloadTime = config.preloadTime || 2000; // 毫秒（备用）
+    const speed = this.currentSpeed;
+    
+    // 基于距离的预加载时间
+    // speed 是每帧像素数 @60fps，所以每秒速度是 speed * 60
+    const speedPerSecond = speed * 60;
+    const timeFromDistance = (spawnOffset / speedPerSecond) * 1000;
+    const timeAhead = Math.max(preloadTime, timeFromDistance);
+    
+    // 按时间顺序生成障碍（带预加载）
     while (this.timelineIndex < timeline.length) {
       const item = timeline[this.timelineIndex];
-      if (item.time <= this.levelTime) {
-        // 使用工厂创建障碍
-        const spawnX = this.player.x + 500 + (item.xOffset || 0);
+      
+      // 提前生成：在障碍预定时间之前 timeAhead 毫秒生成
+      const spawnTriggerTime = item.time - timeAhead;
+      
+      if (this.levelTime >= spawnTriggerTime && !item.spawned) {
+        // 生成位置：屏幕右侧外 + 偏移
+        // 确保障碍平滑滑入屏幕
+        const spawnX = CANVAS_WIDTH + spawnOffset + (item.xOffset || 0);
+        
         const obstacle = ObstacleFactory.create({
           type: item.type,
           spawnX: spawnX,
-          xOffset: item.xOffset || 0
+          xOffset: 0 // xOffset 已包含在 spawnX 中
         });
         
         if (obstacle) {
           this.obstacles.obstacles.push(obstacle);
+          item.spawned = true; // 标记已生成，避免重复
         }
         
         this.timelineIndex++;
-      } else {
+      } else if (this.levelTime < spawnTriggerTime) {
+        // 还没到生成时间，后面的也不用检查
         break;
+      } else {
+        // 已生成或跳过，继续下一个
+        this.timelineIndex++;
       }
     }
     
-    // 检查关卡完成
-    if (this.timelineIndex >= timeline.length) {
-      // 所有障碍已生成，检查是否全部通过
+    // 检查关卡完成（所有障碍已生成且通过）
+    const allSpawned = timeline.every(item => item.spawned);
+    if (allSpawned) {
       const activeObstacles = this.obstacles.obstacles.filter(o => o.x + o.width > 0).length;
       if (activeObstacles === 0) {
         this.levelComplete();
@@ -491,7 +522,12 @@ export class Game {
   createExampleLevel() {
     return {
       meta: { name: '示例关卡', author: 'system', version: 1 },
-      config: { baseSpeed: 6, gravity: 1.2, spawnOffset: 300 },
+      config: { 
+        baseSpeed: 6, 
+        gravity: 1.2, 
+        spawnOffset: 500,    // 提前 500 像素生成
+        preloadTime: 2000    // 提前 2 秒生成
+      },
       timeline: [
         { time: 1500, type: 'low', xOffset: 0 },
         { time: 2800, type: 'low', xOffset: 0 },

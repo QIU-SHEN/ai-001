@@ -211,12 +211,14 @@ export class Editor {
       config: {
         baseSpeed: 6,
         gravity: 1.2,
-        spawnOffset: 300
+        spawnOffset: 500,    // 生成提前量（像素）
+        preloadTime: 2000    // 预加载时间（毫秒）
       },
       timeline: this.state.events.map(e => ({
         time: e.time,
         type: e.type,
         xOffset: e.xOffset || 0
+        // 注意：不包含 spawned 标记，这是运行时状态
       }))
     };
     
@@ -235,6 +237,11 @@ export class Editor {
   playtest() {
     const levelData = this.exportLevel();
     
+    if (!levelData.timeline.length) {
+      console.warn('[Editor] Timeline 为空，请先添加障碍');
+      return;
+    }
+    
     // 隐藏编辑器
     this.destroy();
     
@@ -242,6 +249,6 @@ export class Editor {
     this.game.loadLevel(levelData);
     this.game.startLevel();
     
-    console.log('[Editor] 开始 Playtest');
+    console.log('[Editor] Playtest 开始 - 障碍从屏幕外预加载');
   }
 }
