@@ -397,6 +397,12 @@ export class Game {
       this.input.backToMenu = false;
     }
     
+    // R 键返回编辑器（从 Playtest 返回）
+    if (this.input.returnToEditor && this.previousEditorState) {
+      this.returnToEditor();
+      this.input.returnToEditor = false;
+    }
+    
     // 开始菜单选择
     if (this.state === 'start') {
       if (this.input.selectEndless) {
@@ -432,10 +438,51 @@ export class Game {
     this.editor = new Editor(this);
     this.editor.init();
     
-    // 编辑器模式：不启动游戏运行，只显示编辑界面
-    // 游戏状态保持为 'start'，不执行游戏更新逻辑
+    // 清除之前保存的编辑器状态（新的编辑会话）
+    this.previousEditorState = null;
     
     console.log('[编辑器] 已启动 - 纯编辑模式，编辑完成后点击 Playtest 测试');
+  }
+  
+  // 保存编辑器状态并进入 Playtest
+  startPlaytestFromEditor(levelData) {
+    // 保存编辑器状态，以便返回时恢复
+    this.previousEditorState = {
+      events: JSON.parse(JSON.stringify(this.editor.state.events)),
+      duration: this.editor.state.duration
+    };
+    
+    // 隐藏编辑器但不销毁数据
+    this.editor.destroy();
+    
+    // 加载关卡并运行
+    this.loadLevel(levelData);
+    this.startLevel();
+    
+    console.log('[Editor] Playtest 开始 - 按 R 返回编辑器');
+  }
+  
+  // 从 Playtest 返回编辑器
+  returnToEditor() {
+    if (!this.previousEditorState) return;
+    
+    // 停止游戏
+    this.stopLevel();
+    
+    // 恢复编辑器状态
+    this.showEditorUI = true;
+    this.mode = GAME_MODE.EDITOR;
+    
+    // 重新创建编辑器并恢复数据
+    this.editor = new Editor(this);
+    this.editor.state.events = JSON.parse(JSON.stringify(this.previousEditorState.events));
+    this.editor.state.duration = this.previousEditorState.duration;
+    this.editor.init();
+    
+    // 恢复显示（由 editor.init() 处理）
+    document.getElementById('editorUI').classList.add('active');
+    
+    console.log('[Editor] 返回编辑器 - 继续编辑');
   }
   
   // 创建示例关卡（临时）

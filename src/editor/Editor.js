@@ -212,16 +212,7 @@ export class Editor {
       return;
     }
     
-    // 隐藏编辑器
-    this.destroy();
-    
-    // 重置编辑器相关状态
-    this.game.showEditorUI = false;
-    
-    // 加载并运行关卡
-    this.game.loadLevel(levelData);
-    this.game.startLevel();
-    
-    console.log('[Editor] Playtest 开始 - 编辑的数据已加载到游戏中');
+    // 使用 Game 的方法保存状态并进入 Playtest
+    this.game.startPlaytestFromEditor(levelData);
   }
 }

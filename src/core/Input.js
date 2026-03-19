@@ -26,6 +26,7 @@ export class Input {
     this.selectEndless = false;       // E
     this.selectLevel = false;         // L
     this.backToMenu = false;          // ESC
+    this.returnToEditor = false;      // R (从 Playtest 返回编辑器)
     
     this.bindInput();
   }
@@ -82,6 +83,9 @@ export class Input {
       if (e.code === 'Escape') {
         this.backToMenu = true;
       }
+      if (e.code === 'KeyR') {
+        this.returnToEditor = true;
+      }
     });
 
     window.addEventListener('keyup', (e) => {
@@ -94,6 +98,10 @@ export class Input {
       // 滑步：松开按键不影响，由timer自动结束
       if (e.code === 'ArrowDown' || e.code === 'KeyS') {
         this.slideKeyDown = false;
+      }
+      // R键：重置返回编辑器标志
+      if (e.code === 'KeyR') {
+        this.returnToEditor = false;
       }
     });
 
@@ -117,6 +125,7 @@ export class Input {
     this.selectEndless = false;
     this.selectLevel = false;
     this.backToMenu = false;
+    this.returnToEditor = false;
     this.editorDelete = false;
     this.editorTest = false;
   }

@@ -87,6 +87,14 @@ export class Renderer {
       this.ctx.font = '14px "Courier New", monospace';
       this.ctx.textAlign = 'left';
       this.ctx.fillText('[EDITOR MODE]', 10, CANVAS_HEIGHT - 10);
+    } else if (game.previousEditorState) {
+      // Playtest 模式（从编辑器来的）：显示返回提示
+      this.ctx.fillStyle = 'rgba(0,0,0,0.7)';
+      this.ctx.fillRect(0, 0, CANVAS_WIDTH, 40);
+      this.ctx.fillStyle = '#fff';
+      this.ctx.font = '16px "Courier New", monospace';
+      this.ctx.textAlign = 'center';
+      this.ctx.fillText('PLAYTEST MODE - 按 R 返回编辑器 | ESC 返回主菜单', CANVAS_WIDTH / 2, 25);
     } else if (state === 'start') {
       this.ctx.fillStyle = 'rgba(0,0,0,0.7)';
       this.ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
