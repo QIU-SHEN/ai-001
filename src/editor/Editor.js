@@ -8,14 +8,11 @@ export class Editor {
   constructor(game) {
     this.game = game;
     
-    // 编辑器状态（按 prompt.md 要求）
+    // 编辑器状态（简化版）
     this.state = {
       duration: 10000, // ms
-      scale: 100, // px per second
       events: [],
-      selectedEventId: null,
-      currentTime: 0,
-      isPlaying: false
+      selectedEventId: null
     };
     
     this.defaultType = 'low';
@@ -49,17 +46,14 @@ export class Editor {
   }
   
   destroy() {
-    this.stopPlay();
     document.getElementById('editorUI').classList.remove('active');
   }
   
   bindButtons() {
-    document.getElementById('btnPlay').addEventListener('click', () => this.play());
-    document.getElementById('btnPause').addEventListener('click', () => this.pause());
     document.getElementById('btnAddLow').addEventListener('click', () => {
       this.addEvent({
         id: this.generateId(),
-        time: this.state.currentTime,
+        time: 0, // 默认在 0ms 处添加
         type: 'low',
         xOffset: 0
       });
@@ -67,7 +61,7 @@ export class Editor {
     document.getElementById('btnAddAir').addEventListener('click', () => {
       this.addEvent({
         id: this.generateId(),
-        time: this.state.currentTime,
+        time: 0, // 默认在 0ms 处添加
         type: 'air',
         xOffset: 0
       });
@@ -80,6 +74,23 @@ export class Editor {
     document.getElementById('btnExport').addEventListener('click', () => this.exportLevel());
     document.getElementById('btnPlaytest').addEventListener('click', () => this.playtest());
     
+    // 缩放按钮
+    document.getElementById('btnZoomIn').addEventListener('click', () => {
+      this.timeline.zoomIn();
+    });
+    document.getElementById('btnZoomOut').addEventListener('click', () => {
+      this.timeline.zoomOut();
+    });
+    
+    // 时长设置
+    document.getElementById('btnSetDuration').addEventListener('click', () => {
+      const input = document.getElementById('edDurationInput');
+      const seconds = parseInt(input.value, 10);
+      if (seconds >= 5 && seconds <= 60) {
+        this.setDuration(seconds * 1000);
+      }
+    });
+    
     // 键盘快捷键
     document.addEventListener('keydown', (e) => {
       if (!document.getElementById('editorUI').classList.contains('active')) return;
@@ -88,10 +99,6 @@ export class Editor {
         if (this.state.selectedEventId) {
           this.deleteEvent(this.state.selectedEventId);
         }
-      }
-      if (e.key === ' ') {
-        e.preventDefault();
-        this.togglePlay();
       }
     });
   }
@@ -103,10 +110,24 @@ export class Editor {
   // ========== 核心 API ==========
   
   addEvent(event) {
+    // 检查是否已存在相同ID的事件（防止重复添加）
+    if (this.state.events.find(e => e.id === event.id)) {
+      return;
+    }
+    
     this.state.events.push(event);
     this.sortEvents();
     this.timeline.render();
     this.selectEvent(event.id);
+    // 注意：编辑器模式下不生成游戏障碍，只编辑数据
+  }
+  
+  // 设置关卡总时长
+  setDuration(duration) {
+    this.state.duration = Math.max(5000, Math.min(60000, duration)); // 限制 5-60 秒
+    this.timeline.renderGrid();
+    this.timeline.render();
+    this.updateInfo();
   }
   
   updateEvent(id, patch) {
@@ -120,6 +141,7 @@ export class Editor {
       if (id === this.state.selectedEventId) {
         this.inspector.update(event);
       }
+      // 注意：编辑器模式下不更新游戏障碍，只编辑数据
     }
   }
   
@@ -132,6 +154,7 @@ export class Editor {
     }
     
     this.timeline.render();
+    // 注意：编辑器模式下不更新游戏障碍
   }
   
   selectEvent(id) {
@@ -146,59 +169,6 @@ export class Editor {
     this.state.events.sort((a, b) => a.time - b.time);
   }
   
-  // ========== 播放控制 ==========
-  
-  play() {
-    if (this.state.isPlaying) return;
-    
-    this.state.isPlaying = true;
-    this.lastPlayTime = performance.now();
-    
-    document.getElementById('btnPlay').style.display = 'none';
-    document.getElementById('btnPause').style.display = 'block';
-    
-    const loop = (now) => {
-      if (!this.state.isPlaying) return;
-      
-      const delta = now - this.lastPlayTime;
-      this.lastPlayTime = now;
-      
-      this.state.currentTime += delta;
-      
-      // 循环播放
-      if (this.state.currentTime > this.state.duration) {
-        this.state.currentTime = 0;
-      }
-      
-      this.timeline.render();
-      this.playLoop = requestAnimationFrame(loop);
-    };
-    
-    this.playLoop = requestAnimationFrame(loop);
-  }
-  
-  pause() {
-    this.state.isPlaying = false;
-    cancelAnimationFrame(this.playLoop);
-    
-    document.getElementById('btnPlay').style.display = 'block';
-    document.getElementById('btnPause').style.display = 'none';
-  }
-  
-  stopPlay() {
-    this.pause();
-    this.state.currentTime = 0;
-    this.timeline.render();
-  }
-  
-  togglePlay() {
-    if (this.state.isPlaying) {
-      this.pause();
-    } else {
-      this.play();
-    }
-  }
-  
   // ========== 导入/导出 ==========
   
   exportLevel() {
@@ -209,10 +179,10 @@ export class Editor {
         version: 1
       },
       config: {
-        baseSpeed: 6,
+        baseSpeed: 5,        // 默认速度 5px/帧
         gravity: 1.2,
-        spawnOffset: 500,    // 生成提前量（像素）
-        preloadTime: 2000    // 预加载时间（毫秒）
+        spawnOffset: 600,    // 600px 提前量，确保平滑滑入
+        preloadTime: 2000
       },
       timeline: this.state.events.map(e => ({
         time: e.time,
@@ -245,10 +215,13 @@ export class Editor {
     // 隐藏编辑器
     this.destroy();
     
-    // 加载并运行
+    // 重置编辑器相关状态
+    this.game.showEditorUI = false;
+    
+    // 加载并运行关卡
     this.game.loadLevel(levelData);
     this.game.startLevel();
     
-    console.log('[Editor] Playtest 开始 - 障碍从屏幕外预加载');
+    console.log('[Editor] Playtest 开始 - 编辑的数据已加载到游戏中');
   }
 }

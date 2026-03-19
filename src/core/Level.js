@@ -18,10 +18,10 @@ export function createEmptyLevel(name = 'New Level', author = 'unknown') {
       version: LEVEL_VERSION
     },
     config: {
-      baseSpeed: 6,
+      baseSpeed: 5,          // 稍微降低默认速度，便于精确计算
       gravity: 1.2,
-      spawnOffset: 500,      // 生成提前量（像素）
-      preloadTime: 2000      // 预加载时间（毫秒）
+      spawnOffset: 600,      // 生成提前量：确保有足够时间滑入
+      preloadTime: 2000      // 备用预加载时间
     },
     timeline: []
   };

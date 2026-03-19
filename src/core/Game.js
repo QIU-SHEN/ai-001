@@ -44,6 +44,9 @@ export class Game {
     this.player = new Player(this);
     this.obstacles = new ObstacleManager(this);
     
+    // 暴露 Obstacle 类供编辑器使用
+    this.Obstacle = Obstacle;
+    
     // ===== 关卡系统（重构）=====
     this.mode = GAME_MODE.ENDLESS;
     this.currentLevel = null;      // 当前关卡数据
@@ -60,10 +63,8 @@ export class Game {
     this.shakeTimer = 0;
     this.shakeIntensity = 0;
     
-    // 录制模式
-    this.isRecording = false;
-    this.recordStartTime = 0;
-    this.recordedData = [];
+    // 编辑器（延迟初始化）
+    this.editor = null;
     
     // 完整编辑器
     this.editor = null; // 延迟初始化
@@ -84,6 +85,7 @@ export class Game {
     
     this.currentLevel = levelData;
     this.mode = GAME_MODE.LEVEL;
+    this.showEditorUI = false; // 退出编辑器模式
     return true;
   }
   
@@ -132,10 +134,6 @@ export class Game {
     this.shakeTimer = 0;
     this.shakeIntensity = 0;
     this.score = 0;
-    
-    // 录制模式重置
-    this.recordedData = [];
-    this.recordStartTime = performance.now();
   }
   
   stopLevel() {
@@ -178,7 +176,7 @@ export class Game {
   
   processTimeline(deltaTime) {
     if (this.mode === GAME_MODE.ENDLESS) return; // 无尽模式不使用 timeline
-    if (this.mode === GAME_MODE.EDITOR) return; // 录制模式不检查胜利
+    if (this.mode === GAME_MODE.EDITOR) return; // 编辑器模式不检查胜利
     if (!this.currentLevel) return;
     
     const timeline = this.currentLevel.timeline;
@@ -192,8 +190,11 @@ export class Game {
     // 基于距离的预加载时间
     // speed 是每帧像素数 @60fps，所以每秒速度是 speed * 60
     const speedPerSecond = speed * 60;
-    const timeFromDistance = (spawnOffset / speedPerSecond) * 1000;
-    const timeAhead = Math.max(preloadTime, timeFromDistance);
+    // 计算障碍从屏幕外移动到玩家位置所需的时间
+    // spawnOffset 是生成点到玩家的距离
+    const timeToReachPlayer = (spawnOffset / speedPerSecond) * 1000;
+    // 提前生成时间 = 移动时间
+    const timeAhead = timeToReachPlayer;
     
     // 按时间顺序生成障碍（带预加载）
     while (this.timelineIndex < timeline.length) {
@@ -203,19 +204,23 @@ export class Game {
       const spawnTriggerTime = item.time - timeAhead;
       
       if (this.levelTime >= spawnTriggerTime && !item.spawned) {
-        // 生成位置：屏幕右侧外 + 偏移
-        // 确保障碍平滑滑入屏幕
-        const spawnX = CANVAS_WIDTH + spawnOffset + (item.xOffset || 0);
+        // 生成位置：屏幕右侧外
+        // 确保障碍在时间 = item.time 时刚好到达玩家位置 (x=100)
+        // spawnOffset 应该等于 timeAhead 时间内移动的距离
+        const spawnX = CANVAS_WIDTH + spawnOffset;
         
         const obstacle = ObstacleFactory.create({
           type: item.type,
           spawnX: spawnX,
-          xOffset: 0 // xOffset 已包含在 spawnX 中
+          xOffset: item.xOffset || 0
         });
         
         if (obstacle) {
           this.obstacles.obstacles.push(obstacle);
           item.spawned = true; // 标记已生成，避免重复
+          
+          // 调试：输出生成时机
+          console.log(`[Spawn] ${item.type} @ t=${Math.floor(this.levelTime)}ms, will reach player @ t=${item.time}ms, spawnX=${spawnX}`);
         }
         
         this.timelineIndex++;
@@ -236,72 +241,6 @@ export class Game {
         this.levelComplete();
       }
     }
-  }
-  
-  // ========== 录制功能 ==========
-  
-  startRecording() {
-    this.isRecording = true;
-    this.recordedData = [];
-    this.recordStartTime = performance.now();
-    this.mode = GAME_MODE.EDITOR;
-    this.currentLevel = createEmptyLevel('录制关卡', 'player');
-    console.log('[录制] 开始，按 1 放置 low，按 2 放置 air，R 清空，P 导出');
-  }
-  
-  recordObstacle(type) {
-    if (!this.isRecording) return;
-    
-    const time = Math.floor(performance.now() - this.recordStartTime);
-    const record = { time, type, xOffset: 0 };
-    this.recordedData.push(record);
-    
-    // 即时生成障碍测试
-    const obstacle = ObstacleFactory.create({
-      type,
-      spawnX: this.player.x + 500,
-      xOffset: 0
-    });
-    if (obstacle) {
-      this.obstacles.obstacles.push(obstacle);
-    }
-    
-    console.log(`[录制] ${type} @ ${time}ms`);
-  }
-  
-  clearRecording() {
-    this.recordedData = [];
-    this.recordStartTime = performance.now();
-    this.obstacles.reset();
-    console.log('[录制] 已清空');
-  }
-  
-  exportLevel() {
-    // 构建完整 Level JSON
-    const level = {
-      meta: {
-        name: '录制关卡',
-        author: 'player',
-        version: 1
-      },
-      config: {
-        baseSpeed: 6,
-        gravity: 1.2,
-        spawnOffset: 300
-      },
-      timeline: [...this.recordedData].sort((a, b) => a.time - b.time)
-    };
-    
-    const json = exportLevel(level);
-    console.log('[录制] 关卡数据（已复制到剪贴板）：');
-    console.log(json);
-    
-    // 尝试复制到剪贴板
-    if (navigator.clipboard) {
-      navigator.clipboard.writeText(json);
-    }
-    
-    return json;
   }
   
   // ========== 游戏逻辑 ==========
@@ -379,27 +318,15 @@ export class Game {
       this.shakeTimer -= timeScale;
     }
     
-    // 录制模式输入处理
-    if (this.isRecording) {
-      if (this.input.editorPlaceLow) {
-        this.recordObstacle('low');
-        this.input.editorPlaceLow = false;
-      }
-      if (this.input.editorPlaceAir) {
-        this.recordObstacle('air');
-        this.input.editorPlaceAir = false;
-      }
-      if (this.input.editorClear) {
-        this.clearRecording();
-        this.input.editorClear = false;
-      }
-      if (this.input.editorExport) {
-        this.exportLevel();
-        this.input.editorExport = false;
-      }
-    }
-    
+
     if (this.state === 'running') {
+      // 编辑器模式下不更新游戏世界（只编辑，不运行）
+      if (this.showEditorUI) {
+        // 编辑器模式：不更新游戏，编辑器有自己的时间轴播放循环
+        return; // 跳过游戏更新
+      }
+      
+      // 正常游戏模式更新
       // 更新关卡时间
       this.levelTime += deltaTime * timeScale;
       
@@ -484,12 +411,6 @@ export class Game {
         this.start();
         this.input.selectLevel = false;
       }
-      if (this.input.editorClear) {
-        this.startRecording();
-        this.resetLevel();
-        this.state = 'running';
-        this.input.editorClear = false;
-      }
       // T 键进入完整编辑器
       if (this.input.editorTest) {
         this.openEditor();
@@ -511,11 +432,10 @@ export class Game {
     this.editor = new Editor(this);
     this.editor.init();
     
-    // 游戏继续运行，但处于编辑器模式
-    this.resetLevel();
-    this.state = 'running';
+    // 编辑器模式：不启动游戏运行，只显示编辑界面
+    // 游戏状态保持为 'start'，不执行游戏更新逻辑
     
-    console.log('[编辑器] 已启动 - 点击时间轴添加/拖动障碍');
+    console.log('[编辑器] 已启动 - 纯编辑模式，编辑完成后点击 Playtest 测试');
   }
   
   // 创建示例关卡（临时）

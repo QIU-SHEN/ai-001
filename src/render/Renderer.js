@@ -80,7 +80,14 @@ export class Renderer {
       this.ctx.restore();
     }
     
-    if (state === 'start') {
+    // 编辑器模式下不绘制游戏菜单
+    if (game.showEditorUI) {
+      // 只显示简单的编辑器提示
+      this.ctx.fillStyle = '#fff';
+      this.ctx.font = '14px "Courier New", monospace';
+      this.ctx.textAlign = 'left';
+      this.ctx.fillText('[EDITOR MODE]', 10, CANVAS_HEIGHT - 10);
+    } else if (state === 'start') {
       this.ctx.fillStyle = 'rgba(0,0,0,0.7)';
       this.ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
       
@@ -99,8 +106,7 @@ export class Renderer {
       this.ctx.fillStyle = '#fff';
       this.ctx.fillText('E - 无尽模式', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 + 50);
       this.ctx.fillText('L - 关卡模式', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 + 80);
-      this.ctx.fillText('R - 录制关卡', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 + 110);
-      this.ctx.fillText('T - 编辑器（时间轴）', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 + 140);
+      this.ctx.fillText('T - 关卡编辑器', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 + 110);
     } else if (state === 'gameover') {
       this.ctx.fillStyle = 'rgba(0,0,0,0.7)';
       this.ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
@@ -139,46 +145,10 @@ export class Renderer {
       this.ctx.fillText('空格: 重新开始 | ESC: 返回菜单', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 + 50);
     }
     
-    // 录制模式 UI（Canvas 版本）
-    if (game.isRecording) {
-      this.drawRecordingUI(game);
-    }
-    
-    // 完整编辑器 UI 现在是 DOM 版本，不需要 Canvas 渲染
+    // 编辑器 UI 是 DOM 版本，不需要 Canvas 渲染
     
     // 显示当前模式
     this.drawModeIndicator(game);
-  }
-  
-  drawRecordingUI(game) {
-    // 编辑器背景条
-    this.ctx.fillStyle = 'rgba(0, 0, 0, 0.9)';
-    this.ctx.fillRect(10, 10, 320, 160);
-    
-    // 标题
-    this.ctx.fillStyle = '#fff';
-    this.ctx.font = 'bold 16px "Courier New", monospace';
-    this.ctx.textAlign = 'left';
-    this.ctx.fillText('[EDITOR] 录制模式', 20, 30);
-    
-    // 按键说明
-    this.ctx.fillStyle = '#aaa';
-    this.ctx.font = '14px "Courier New", monospace';
-    this.ctx.fillText('1: 放置 low (跳跃障碍)', 20, 55);
-    this.ctx.fillText('2: 放置 air (滑行障碍)', 20, 75);
-    this.ctx.fillText('R: 清空 | P: 导出 JSON', 20, 95);
-    this.ctx.fillText('(障碍生成在玩家前方500px)', 20, 115);
-    
-    // 已记录数量
-    const count = game.recordedData.length;
-    this.ctx.fillStyle = '#fff';
-    this.ctx.font = 'bold 14px "Courier New", monospace';
-    this.ctx.fillText(`已记录: ${count} 个障碍`, 20, 135);
-    
-    // 录制时间
-    const time = Math.floor(game.levelTime / 100) / 10;
-    this.ctx.fillStyle = '#aaa';
-    this.ctx.fillText(`时间: ${time.toFixed(1)}s`, 20, 155);
   }
   
   drawModeIndicator(game) {
