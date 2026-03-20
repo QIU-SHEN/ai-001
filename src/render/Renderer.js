@@ -80,12 +80,8 @@ export class Renderer {
       this.ctx.restore();
     }
     
-    // 游戏结束/胜利状态优先显示
-    if (state === 'win' || state === 'gameover') {
-      // 让下面的逻辑处理
-    }
     // 编辑器模式
-    else if (game.showEditorUI) {
+    if (game.showEditorUI) {
       // 只显示简单的编辑器提示
       this.ctx.fillStyle = '#fff';
       this.ctx.font = '14px "Courier New", monospace';
@@ -120,8 +116,16 @@ export class Renderer {
       
       this.ctx.fillStyle = '#fff';
       this.ctx.fillText('E - 无尽模式', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 + 50);
-      this.ctx.fillText('L - 关卡模式', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 + 80);
-      this.ctx.fillText('T - 关卡编辑器', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 + 110);
+      this.ctx.fillText('T - 关卡编辑器', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 + 80);
+      
+      // 关卡仓库按钮
+      this.ctx.fillStyle = 'rgba(255,255,255,0.1)';
+      this.ctx.fillRect(CANVAS_WIDTH/2 - 100, CANVAS_HEIGHT/2 + 100, 200, 36);
+      this.ctx.strokeStyle = '#fff';
+      this.ctx.lineWidth = 1;
+      this.ctx.strokeRect(CANVAS_WIDTH/2 - 100, CANVAS_HEIGHT/2 + 100, 200, 36);
+      this.ctx.fillStyle = '#fff';
+      this.ctx.fillText('R - 关卡仓库', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 + 123);
     } else if (state === 'gameover') {
       this.ctx.fillStyle = 'rgba(0,0,0,0.7)';
       this.ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);

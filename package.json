@@ -4,12 +4,11 @@
   "description": "A minimalist endless runner game built with Electron",
   "main": "main.js",
   "scripts": {
-    "start": "electron .",
+    "start": "node_modules\\electron\\dist\\electron.exe .",
     "build": "electron-builder --win",
     "build:portable": "electron-builder --win portable"
   },
   "devDependencies": {
-    "electron": "^28.0.0",
     "electron-builder": "^24.9.1"
   },
   "build": {
@@ -20,15 +19,19 @@
     },
     "files": [
       "main.js",
+      "preload.js",
       "index.html",
-      "game.js",
+      "src/**/*",
+      "levels/**/*",
       "package.json"
     ],
     "win": {
       "target": [
         {
           "target": "portable",
-          "arch": ["x64"]
+          "arch": [
+            "x64"
+          ]
         }
       ],
       "icon": "icon.ico"
@@ -37,5 +40,8 @@
       "oneClick": false,
       "allowToChangeInstallationDirectory": true
     }
+  },
+  "dependencies": {
+    "electron": "^28.0.0"
   }
 }

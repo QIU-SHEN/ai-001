@@ -416,13 +416,6 @@ export class Game {
         this.start();
         this.input.selectEndless = false;
       }
-      if (this.input.selectLevel) {
-        // 加载示例关卡（后续可改为文件选择）
-        const exampleLevel = this.createExampleLevel();
-        this.loadLevel(exampleLevel);
-        this.start();
-        this.input.selectLevel = false;
-      }
       // T 键进入完整编辑器
       if (this.input.editorTest) {
         this.openEditor();
@@ -489,28 +482,6 @@ export class Game {
     document.getElementById('editorUI').classList.add('active');
     
     console.log('[Editor] 返回编辑器 - 继续编辑');
-  }
-  
-  // 创建示例关卡（临时）
-  createExampleLevel() {
-    return {
-      meta: { name: '示例关卡', author: 'system', version: 1 },
-      config: { 
-        baseSpeed: 6, 
-        gravity: 1.2, 
-        spawnOffset: 500,    // 提前 500 像素生成
-        preloadTime: 2000    // 提前 2 秒生成
-      },
-      timeline: [
-        { time: 1500, type: 'low', xOffset: 0 },
-        { time: 2800, type: 'low', xOffset: 0 },
-        { time: 4000, type: 'air', xOffset: 0 },
-        { time: 5200, type: 'low', xOffset: 0 },
-        { time: 6500, type: 'air', xOffset: 0 },
-        { time: 7800, type: 'low', xOffset: 0 },
-        { time: 9000, type: 'low', xOffset: 0 }
-      ]
-    };
   }
   
   draw() {

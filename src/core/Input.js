@@ -24,7 +24,6 @@ export class Input {
     this.editorDelete = false;        // Delete
     this.editorTest = false;          // T
     this.selectEndless = false;       // E
-    this.selectLevel = false;         // L
     this.backToMenu = false;          // ESC
     this.returnToEditor = false;      // R (从 Playtest 返回编辑器)
     
@@ -77,9 +76,6 @@ export class Input {
       if (e.code === 'KeyE') {
         this.selectEndless = true;
       }
-      if (e.code === 'KeyL') {
-        this.selectLevel = true;
-      }
       if (e.code === 'Escape') {
         this.backToMenu = true;
       }
@@ -123,7 +119,6 @@ export class Input {
     this.editorClear = false;
     this.editorExport = false;
     this.selectEndless = false;
-    this.selectLevel = false;
     this.backToMenu = false;
     this.returnToEditor = false;
     this.editorDelete = false;
