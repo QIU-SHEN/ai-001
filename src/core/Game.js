@@ -391,7 +391,13 @@ export class Game {
     
     // ESC 返回菜单
     if (this.input.backToMenu) {
-      if (this.state === 'gameover' || this.state === 'win') {
+      // Playtest 模式下返回主菜单
+      if (this.previousEditorState && this.state === 'running') {
+        this.stopLevel();
+        this.previousEditorState = null; // 清除编辑器状态
+      }
+      // 游戏结束/胜利状态返回菜单
+      else if (this.state === 'gameover' || this.state === 'win') {
         this.stopLevel();
       }
       this.input.backToMenu = false;

@@ -51,17 +51,19 @@ export class Editor {
   
   bindButtons() {
     document.getElementById('btnAddLow').addEventListener('click', () => {
+      this.defaultType = 'low'; // 设置默认类型
       this.addEvent({
         id: this.generateId(),
-        time: 0, // 默认在 0ms 处添加
+        time: 0,
         type: 'low',
         xOffset: 0
       });
     });
     document.getElementById('btnAddAir').addEventListener('click', () => {
+      this.defaultType = 'air'; // 设置默认类型
       this.addEvent({
         id: this.generateId(),
-        time: 0, // 默认在 0ms 处添加
+        time: 0,
         type: 'air',
         xOffset: 0
       });
