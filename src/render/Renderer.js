@@ -146,7 +146,7 @@ export class Renderer {
       this.ctx.fillText(rating, CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 + 35);
       
       this.ctx.font = '16px "Courier New", monospace';
-      this.ctx.fillText('空格: 重新开始 | ESC: 返回菜单', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 + 80);
+      this.ctx.fillText('回车: 重新开始 | ESC: 返回菜单', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 + 80);
     } else if (state === 'win') {
       // 关卡胜利画面
       this.ctx.fillStyle = 'rgba(0,0,0,0.7)';
@@ -161,7 +161,7 @@ export class Renderer {
       this.ctx.fillText('关卡完成', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 + 10);
       
       this.ctx.font = '16px "Courier New", monospace';
-      this.ctx.fillText('空格: 重新开始 | ESC: 返回菜单', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 + 50);
+      this.ctx.fillText('回车: 重新开始 | ESC: 返回菜单', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 + 50);
     }
     
     // 编辑器 UI 是 DOM 版本，不需要 Canvas 渲染

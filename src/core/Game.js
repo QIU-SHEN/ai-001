@@ -381,12 +381,12 @@ export class Game {
       }
     }
     
-    // 状态切换输入
-    if (this.input.jumpPressed) {
+    // 重新开始（回车键）
+    if (this.input.restart) {
       if (this.state === 'gameover' || this.state === 'win') {
         this.start();
       }
-      this.input.jumpPressed = false;
+      this.input.restart = false;
     }
     
     // ESC 返回菜单
