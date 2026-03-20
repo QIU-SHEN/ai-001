@@ -33,6 +33,40 @@ export class Timeline {
     this.bindDragEvents();
     this.renderGrid();
     this.bindWheel();
+    this.createPlayhead();
+  }
+  
+  // 创建播放指针
+  createPlayhead() {
+    this.playhead = document.createElement('div');
+    this.playhead.className = 'playhead';
+    this.playhead.style.cssText = `
+      position: absolute;
+      top: 0;
+      width: 2px;
+      height: 100%;
+      background: #0f0;
+      pointer-events: none;
+      z-index: 10;
+      left: 0px;
+    `;
+    this.track.appendChild(this.playhead);
+  }
+  
+  // 更新播放指针位置
+  updatePlayhead(timeMs) {
+    if (!this.playhead) return;
+    const x = this.timeToX(timeMs);
+    this.playhead.style.left = x + 'px';
+    
+    // 自动滚动跟随
+    const containerRect = this.container.getBoundingClientRect();
+    const playheadX = x - this.container.scrollLeft;
+    
+    // 如果播放指针超出可视区域，自动滚动
+    if (playheadX < 0 || playheadX > containerRect.width - 100) {
+      this.container.scrollLeft = x - containerRect.width / 2;
+    }
   }
   
   bindWheel() {

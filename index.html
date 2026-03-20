@@ -141,6 +141,30 @@
       white-space: nowrap;
     }
     
+    /* 播放指针 */
+    .playhead {
+      position: absolute;
+      top: 0;
+      width: 2px;
+      height: 100%;
+      background: #0f0;
+      pointer-events: none;
+      z-index: 10;
+      box-shadow: 0 0 4px #0f0;
+    }
+    
+    .playhead::before {
+      content: '';
+      position: absolute;
+      top: -5px;
+      left: -4px;
+      width: 0;
+      height: 0;
+      border-left: 5px solid transparent;
+      border-right: 5px solid transparent;
+      border-top: 8px solid #0f0;
+    }
+    
     /* 自定义输入对话框 */
     #inputDialog {
       position: absolute;

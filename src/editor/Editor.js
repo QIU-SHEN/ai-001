@@ -24,6 +24,10 @@ export class Editor {
     // 播放循环
     this.playLoop = null;
     this.lastPlayTime = 0;
+    
+    // 音频播放器引用
+    this.audioPlayer = null;
+    this.audioUpdateId = null;
   }
   
   // ========== 初始化 ==========
@@ -47,6 +51,7 @@ export class Editor {
   
   destroy() {
     document.getElementById('editorUI').classList.remove('active');
+    this.stopAudioSync();
   }
   
   bindButtons() {
@@ -178,6 +183,54 @@ export class Editor {
   
   sortEvents() {
     this.state.events.sort((a, b) => a.time - b.time);
+  }
+  
+  // ========== 音频控制 ==========
+  
+  /**
+   * 设置音频播放器
+   * @param {AudioPlayer} audioPlayer
+   */
+  setAudioPlayer(audioPlayer) {
+    this.audioPlayer = audioPlayer;
+    
+    // 设置音频加载完成回调
+    this.audioPlayer.onLoaded = () => {
+      const duration = this.audioPlayer.getDuration();
+      console.log('[Editor] 音频加载完成，时长:', duration, 'ms');
+      // 自动设置关卡时长为音频时长
+      this.setDuration(duration);
+      // 更新时间轴输入框
+      const input = document.getElementById('edDurationInput');
+      if (input) input.value = Math.floor(duration / 1000);
+    };
+    
+    // 开始播放指针更新循环
+    this.startAudioSync();
+  }
+  
+  /**
+   * 开始音频同步更新
+   */
+  startAudioSync() {
+    const update = () => {
+      if (this.audioPlayer && this.audioPlayer.isPlaying()) {
+        const currentTime = this.audioPlayer.getCurrentTime();
+        this.timeline.updatePlayhead(currentTime);
+      }
+      this.audioUpdateId = requestAnimationFrame(update);
+    };
+    update();
+  }
+  
+  /**
+   * 停止音频同步
+   */
+  stopAudioSync() {
+    if (this.audioUpdateId) {
+      cancelAnimationFrame(this.audioUpdateId);
+      this.audioUpdateId = null;
+    }
   }
   
   // ========== 导入/导出 ==========

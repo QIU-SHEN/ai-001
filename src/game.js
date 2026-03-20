@@ -186,6 +186,7 @@ document.addEventListener('keydown', (e) => {
 // ========== 音频控制 ==========
 
 const audioPlayer = new AudioPlayer();
+window.audioPlayer = audioPlayer; // 暴露到全局供编辑器使用
 let audioUpdateId = null;
 
 /**

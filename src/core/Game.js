@@ -443,6 +443,11 @@ export class Game {
     this.editor = new Editor(this);
     this.editor.init();
     
+    // 连接音频播放器
+    if (window.audioPlayer) {
+      this.editor.setAudioPlayer(window.audioPlayer);
+    }
+    
     // 清除之前保存的编辑器状态（新的编辑会话）
     this.previousEditorState = null;
     
@@ -489,6 +494,11 @@ export class Game {
     this.editor.state.events = JSON.parse(JSON.stringify(this.previousEditorState.events));
     this.editor.state.duration = this.previousEditorState.duration;
     this.editor.init();
+    
+    // 连接音频播放器
+    if (window.audioPlayer) {
+      this.editor.setAudioPlayer(window.audioPlayer);
+    }
     
     // 显示音频面板
     if (window.showAudioPanel) window.showAudioPanel(true);
