@@ -210,6 +210,26 @@ export class Editor {
   }
   
   /**
+   * 从打点记录器同步事件
+   * @param {Array} events - BeatRecorder 的事件数组
+   */
+  syncFromRecorder(events) {
+    // 转换为编辑器事件格式
+    this.state.events = events.map(e => ({
+      id: e.id,
+      time: e.time,
+      type: e.type,
+      xOffset: e.xOffset || 0
+    }));
+    
+    // 刷新显示
+    this.timeline.render();
+    this.updateInfo();
+    
+    console.log('[Editor] 从打点记录器同步', events.length, '个事件');
+  }
+  
+  /**
    * 开始音频同步更新
    */
   startAudioSync() {

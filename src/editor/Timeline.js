@@ -38,6 +38,12 @@ export class Timeline {
   
   // 创建播放指针
   createPlayhead() {
+    // 先清除旧的 playhead（如果存在）
+    const oldPlayhead = this.track.querySelector('.playhead');
+    if (oldPlayhead) {
+      oldPlayhead.remove();
+    }
+    
     this.playhead = document.createElement('div');
     this.playhead.className = 'playhead';
     this.playhead.style.cssText = `

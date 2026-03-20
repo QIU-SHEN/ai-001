@@ -7,6 +7,7 @@ import { LevelRepository } from './core/LevelRepository.js';
 import { LevelLoader } from './core/LevelLoader.js';
 import { LevelSelectView } from './ui/LevelSelectView.js';
 import { AudioPlayer } from './audio/AudioPlayer.js';
+import { BeatRecorder } from './editor/BeatRecorder.js';
 
 const canvas = document.getElementById('gameCanvas');
 const game = new Game(canvas);
@@ -198,6 +199,27 @@ function initAudioControl() {
   const playBtn = document.getElementById('playBtn');
   const timeDisplay = document.getElementById('timeDisplay');
   const fileNameDisplay = document.getElementById('audioFileName');
+  const clearBtn = document.getElementById('clearBeatsBtn');
+  
+  // 创建打点记录器
+  const recorder = new BeatRecorder(audioPlayer);
+  window.beatRecorder = recorder; // 暴露到全局供调试
+  
+  // 同步事件到编辑器时间轴
+  function syncEventsToEditor() {
+    if (game.editor) {
+      game.editor.syncFromRecorder(recorder.getEvents());
+    }
+  }
+  
+  // 设置打点记录器回调
+  recorder.onEventAdded = () => {
+    syncEventsToEditor();
+  };
+  
+  recorder.onEventsCleared = () => {
+    syncEventsToEditor();
+  };
   
   // 加载文件
   fileInput.onchange = (e) => {
@@ -214,6 +236,37 @@ function initAudioControl() {
     audioPlayer.toggle();
     updatePlayButton();
   };
+  
+  // 清空打点按钮
+  clearBtn.onclick = () => {
+    if (confirm('确定要清空所有打点事件吗？')) {
+      recorder.clear();
+    }
+  };
+  
+  // 键盘打点（只在编辑器模式下有效）
+  document.addEventListener('keydown', (e) => {
+    // 只在编辑器模式下响应
+    if (!game.showEditorUI) return;
+    
+    // 空格键 - 记录 low
+    if (e.code === 'Space') {
+      e.preventDefault(); // 防止页面滚动
+      const event = recorder.recordBeat('low');
+      if (event) {
+        console.log('[Beat] 空格打点:', event.time + 'ms');
+      }
+    }
+    
+    // S键 - 记录 air
+    if (e.code === 'KeyS') {
+      e.preventDefault();
+      const event = recorder.recordBeat('air');
+      if (event) {
+        console.log('[Beat] S键打点:', event.time + 'ms');
+      }
+    }
+  });
   
   // 更新时间显示
   function updateTime() {
@@ -235,18 +288,20 @@ function initAudioControl() {
   // 开始时间更新循环
   updateTime();
   
-  console.log('[Audio] 音频控制已初始化');
+  console.log('[Audio] 音频控制已初始化（含打点功能）');
+  
 }
 
 /**
  * 显示/隐藏音频面板（由编辑器调用）
  */
 window.showAudioPanel = (show) => {
-  const panel = document.getElementById('audioPanel');
+  const audioPanel = document.getElementById('audioPanel');
+  
   if (show) {
-    panel.classList.add('active');
+    audioPanel.classList.add('active');
   } else {
-    panel.classList.remove('active');
+    audioPanel.classList.remove('active');
     // 隐藏时暂停音频
     audioPlayer.pause();
   }

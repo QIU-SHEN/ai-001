@@ -141,6 +141,17 @@
       white-space: nowrap;
     }
     
+    #audioPanel button.primary {
+      background: #0a0;
+      border-color: #0f0;
+      color: #0f0;
+    }
+    
+    #audioPanel button.primary:hover {
+      background: #0c0;
+      color: #000;
+    }
+    
     /* 播放指针 */
     .playhead {
       position: absolute;
@@ -574,7 +585,10 @@
     <span id="audioFileName">未选择文件</span>
     <button id="playBtn" disabled>播放 / 暂停</button>
     <span id="timeDisplay">0 ms</span>
+    <button id="clearBeatsBtn">清空打点</button>
   </div>
+  
+
   
   <!-- 输入对话框 -->
   <div id="inputDialog">
