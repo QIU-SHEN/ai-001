@@ -21,7 +21,7 @@ let levelSelectView = null;
 /**
  * 初始化关卡选择系统
  */
-function initLevelSystem() {
+async function initLevelSystem() {
   // 创建关卡选择视图
   levelSelectView = new LevelSelectView('levelList', game);
   
@@ -37,59 +37,136 @@ function initLevelSystem() {
     const folder = await window.electronAPI.selectLevelFolder();
     if (!folder) return;
 
-    // 显示路径
-    document.getElementById('folderPath').textContent = folder;
-    
-    // 创建仓库并加载关卡
-    currentRepo = new LevelRepository(folder);
-    levelSelectView.setRepository(currentRepo);
-    
-    // 保存到全局供编辑器使用
-    window.currentRepo = currentRepo;
-    
-    console.log('[Level] 已选择关卡文件夹:', folder);
+    await setLevelFolder(folder);
   });
+
+  // 尝试加载上次保存的文件夹
+  const savedFolder = localStorage.getItem('levelFolder');
+  if (savedFolder) {
+    await setLevelFolder(savedFolder);
+  }
 
   console.log('[Level] 关卡系统已初始化');
 }
 
 /**
- * 编辑器保存关卡到仓库
+ * 设置关卡文件夹
  */
-async function saveLevelToRepo() {
-  if (!window.currentRepo) {
-    alert('请先选择关卡文件夹');
-    return;
-  }
-
-  if (!game.editor) {
-    alert('编辑器未初始化');
-    return;
-  }
-
-  const name = prompt('请输入关卡名称');
-  if (!name) return;
-
-  const levelData = game.editor.exportLevel();
+async function setLevelFolder(folder) {
+  // 显示路径
+  document.getElementById('folderPath').textContent = folder;
   
-  // 添加元数据
-  levelData.meta = {
-    name: name,
-    author: '',
-    version: '1.0',
-    createdAt: new Date().toISOString()
-  };
+  // 创建仓库并加载关卡
+  currentRepo = new LevelRepository(folder);
+  levelSelectView.setRepository(currentRepo);
+  
+  // 保存到全局供编辑器使用
+  window.currentRepo = currentRepo;
+  
+  // 持久化保存
+  localStorage.setItem('levelFolder', folder);
+  
+  console.log('[Level] 已设置关卡文件夹:', folder);
+}
 
-  const success = await window.currentRepo.saveLevel(name, levelData);
-  if (success) {
-    alert('关卡已保存！');
-    // 刷新列表
-    levelSelectView?.refresh();
+/**
+ * 显示自定义输入对话框（替代 prompt）
+ */
+function showInputDialog(title, placeholder = '') {
+  return new Promise((resolve) => {
+    const dialog = document.getElementById('inputDialog');
+    const titleEl = document.getElementById('inputDialogTitle');
+    const inputEl = document.getElementById('inputDialogField');
+    const confirmBtn = document.getElementById('inputDialogConfirm');
+    const cancelBtn = document.getElementById('inputDialogCancel');
+    
+    titleEl.textContent = title;
+    inputEl.value = '';
+    inputEl.placeholder = placeholder;
+    dialog.classList.add('active');
+    inputEl.focus();
+    
+    const cleanup = () => {
+      dialog.classList.remove('active');
+      confirmBtn.onclick = null;
+      cancelBtn.onclick = null;
+      inputEl.onkeydown = null;
+    };
+    
+    confirmBtn.onclick = () => {
+      cleanup();
+      resolve(inputEl.value.trim());
+    };
+    
+    cancelBtn.onclick = () => {
+      cleanup();
+      resolve(null);
+    };
+    
+    inputEl.onkeydown = (e) => {
+      if (e.code === 'Enter') {
+        cleanup();
+        resolve(inputEl.value.trim());
+      } else if (e.code === 'Escape') {
+        cleanup();
+        resolve(null);
+      }
+    };
+  });
+}
+
+/**
+ * 统一保存关卡（有仓库则保存到仓库，无仓库则导出 JSON）
+ */
+async function saveLevel() {
+  console.log('[saveLevel] 开始执行');
+  try {
+    if (!game.editor) {
+      alert('编辑器未初始化');
+      return;
+    }
+
+    const levelData = game.editor.exportLevel();
+    console.log('[saveLevel] levelData:', levelData);
+
+    if (window.currentRepo) {
+      // 有仓库：保存到仓库
+      const name = await showInputDialog('请输入关卡名称', 'My Level');
+      if (!name) return;
+
+      // 添加元数据
+      levelData.meta = {
+        name: name,
+        author: '',
+        version: '1.0',
+        createdAt: new Date().toISOString()
+      };
+
+      const success = await window.currentRepo.saveLevel(name, levelData);
+      if (success) {
+        alert('关卡已保存到仓库！');
+        levelSelectView?.refresh();
+      }
+    } else {
+      // 无仓库：导出 JSON 到剪贴板
+      const json = JSON.stringify(levelData, null, 2);
+      
+      if (navigator.clipboard) {
+        navigator.clipboard.writeText(json);
+        alert('关卡 JSON 已复制到剪贴板！\n\n若要保存到本地仓库，请先在主菜单按 R 选择关卡文件夹。');
+      } else {
+        console.log('[Level] 导出关卡：', json);
+        alert('请查看控制台获取关卡 JSON');
+      }
+    }
+  } catch (e) {
+    console.error('[saveLevel] 错误:', e);
+    alert('保存失败: ' + e.message);
   }
 }
 
 // 暴露给全局供编辑器调用
-window.saveLevelToRepo = saveLevelToRepo;
+window.saveLevel = saveLevel;
 
 // ========== 主菜单扩展：R 键打开关卡选择面板 ==========
 
@@ -104,18 +181,6 @@ document.addEventListener('keydown', (e) => {
     }
   }
 });
-
-// ========== 编辑器集成 ==========
-
-// 等待编辑器初始化后绑定保存按钮
-const checkEditor = setInterval(() => {
-  const saveBtn = document.getElementById('btnSaveToRepo');
-  if (saveBtn) {
-    saveBtn.addEventListener('click', saveLevelToRepo);
-    clearInterval(checkEditor);
-    console.log('[Level] 编辑器保存按钮已绑定');
-  }
-}, 500);
 
 // ========== 启动 ==========
 

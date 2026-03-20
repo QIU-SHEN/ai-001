@@ -73,7 +73,16 @@ export class Editor {
         this.deleteEvent(this.state.selectedEventId);
       }
     });
-    document.getElementById('btnExport').addEventListener('click', () => this.exportLevel());
+    document.getElementById('btnExport').addEventListener('click', () => {
+      console.log('[Editor] 保存按钮点击, window.saveLevel:', typeof window.saveLevel);
+      // 如果有仓库则保存到仓库，否则导出 JSON
+      if (window.saveLevel) {
+        window.saveLevel();
+      } else {
+        this.exportLevel();
+        alert('关卡 JSON 已导出到控制台（剪贴板权限可能受限）');
+      }
+    });
     document.getElementById('btnPlaytest').addEventListener('click', () => this.playtest());
     
     // 缩放按钮

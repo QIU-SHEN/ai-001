@@ -22,8 +22,8 @@ function createWindow() {
   console.log('[Main] Loading index.html...');
   mainWindow.loadFile('index.html');
   
-  // 打开开发者工具
-  mainWindow.webContents.openDevTools();
+  // 开发者工具（调试时启用）
+  // mainWindow.webContents.openDevTools();
   
   // 监听加载完成
   mainWindow.webContents.on('did-finish-load', () => {

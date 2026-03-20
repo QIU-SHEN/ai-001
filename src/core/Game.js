@@ -415,11 +415,15 @@ export class Game {
         this.mode = GAME_MODE.ENDLESS;
         this.start();
         this.input.selectEndless = false;
+        // 隐藏关卡仓库面板
+        document.getElementById('levelSelectPanel')?.classList.remove('active');
       }
       // T 键进入完整编辑器
       if (this.input.editorTest) {
         this.openEditor();
         this.input.editorTest = false;
+        // 隐藏关卡仓库面板
+        document.getElementById('levelSelectPanel')?.classList.remove('active');
       }
     }
     
