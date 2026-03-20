@@ -138,6 +138,8 @@ export class Game {
   
   stopLevel() {
     this.state = 'start';
+    // 隐藏音频面板
+    if (window.showAudioPanel) window.showAudioPanel(false);
   }
   
   // ========== 旧接口兼容 ==========
@@ -444,6 +446,9 @@ export class Game {
     // 清除之前保存的编辑器状态（新的编辑会话）
     this.previousEditorState = null;
     
+    // 显示音频面板
+    if (window.showAudioPanel) window.showAudioPanel(true);
+    
     console.log('[编辑器] 已启动 - 纯编辑模式，编辑完成后点击 Playtest 测试');
   }
   
@@ -461,6 +466,9 @@ export class Game {
     // 加载关卡并运行
     this.loadLevel(levelData);
     this.startLevel();
+    
+    // 隐藏音频面板
+    if (window.showAudioPanel) window.showAudioPanel(false);
     
     console.log('[Editor] Playtest 开始 - 按 R 返回编辑器');
   }
@@ -481,6 +489,9 @@ export class Game {
     this.editor.state.events = JSON.parse(JSON.stringify(this.previousEditorState.events));
     this.editor.state.duration = this.previousEditorState.duration;
     this.editor.init();
+    
+    // 显示音频面板
+    if (window.showAudioPanel) window.showAudioPanel(true);
     
     // 恢复显示（由 editor.init() 处理）
     document.getElementById('editorUI').classList.add('active');

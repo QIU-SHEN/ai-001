@@ -1,11 +1,12 @@
 // ============================================
 // Minimal Endless Runner - Entry Point
-// 集成本地关卡仓库系统
+// 集成本地关卡仓库系统 + 音频控制
 // ============================================
 import { Game } from './core/Game.js';
 import { LevelRepository } from './core/LevelRepository.js';
 import { LevelLoader } from './core/LevelLoader.js';
 import { LevelSelectView } from './ui/LevelSelectView.js';
+import { AudioPlayer } from './audio/AudioPlayer.js';
 
 const canvas = document.getElementById('gameCanvas');
 const game = new Game(canvas);
@@ -182,7 +183,76 @@ document.addEventListener('keydown', (e) => {
   }
 });
 
+// ========== 音频控制 ==========
+
+const audioPlayer = new AudioPlayer();
+let audioUpdateId = null;
+
+/**
+ * 初始化音频控制（在编辑器模式下显示）
+ */
+function initAudioControl() {
+  const audioPanel = document.getElementById('audioPanel');
+  const fileInput = document.getElementById('audioFile');
+  const playBtn = document.getElementById('playBtn');
+  const timeDisplay = document.getElementById('timeDisplay');
+  const fileNameDisplay = document.getElementById('audioFileName');
+  
+  // 加载文件
+  fileInput.onchange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      audioPlayer.loadFile(file);
+      fileNameDisplay.textContent = file.name;
+      playBtn.disabled = false;
+    }
+  };
+  
+  // 播放/暂停按钮
+  playBtn.onclick = () => {
+    audioPlayer.toggle();
+    updatePlayButton();
+  };
+  
+  // 更新时间显示
+  function updateTime() {
+    const time = audioPlayer.getCurrentTime();
+    timeDisplay.textContent = Math.floor(time) + ' ms';
+    audioUpdateId = requestAnimationFrame(updateTime);
+  }
+  
+  // 更新按钮文字
+  function updatePlayButton() {
+    playBtn.textContent = audioPlayer.isPlaying() ? '暂停' : '播放';
+  }
+  
+  // 音频结束时重置按钮
+  audioPlayer.onEnded = () => {
+    updatePlayButton();
+  };
+  
+  // 开始时间更新循环
+  updateTime();
+  
+  console.log('[Audio] 音频控制已初始化');
+}
+
+/**
+ * 显示/隐藏音频面板（由编辑器调用）
+ */
+window.showAudioPanel = (show) => {
+  const panel = document.getElementById('audioPanel');
+  if (show) {
+    panel.classList.add('active');
+  } else {
+    panel.classList.remove('active');
+    // 隐藏时暂停音频
+    audioPlayer.pause();
+  }
+};
+
 // ========== 启动 ==========
 
 initLevelSystem();
+initAudioControl();
 game.loop(0);
