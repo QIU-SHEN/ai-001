@@ -21,11 +21,16 @@
   - **护盾机制**：每5次完美跳跃获得1次免死护盾
   - **冲锋状态**：有护盾时角色倾斜，表示处于冲锋状态
   - **滑行加速**：滑铲时速度提升（最高8%）
-- **关卡系统（UGC）**：
-  - **无尽模式**：经典跑酷，挑战高分
-  - **关卡模式**：加载 JSON 关卡，通关挑战
-  - **可视化编辑器**：时间轴编辑，拖拽调整，导出 JSON
-  - **数据结构**：标准化 Level JSON（meta + config + timeline）
+- **本地关卡仓库系统**：
+  - 选择任意本地文件夹作为关卡仓库
+  - 自动扫描并列出所有 JSON 关卡
+  - 自动记忆上次选择的仓库路径
+  - 点击即可游玩关卡
+- **关卡编辑器（UGC）**：
+  - 可视化时间轴编辑
+  - 拖拽调整障碍位置
+  - 保存到仓库或导出 JSON
+  - 实时 Playtest 测试
 - **难度渐进**：随分数提升速度和障碍频率
 - **评分系统**：
   - < 200分："还需努力"
@@ -39,7 +44,7 @@
 
 | 按键 | 功能 |
 |-----|------|
-| `空格` | 跳跃（双击二段跳） |
+| `空格` 或 `↑` | 跳跃（双击二段跳） |
 | `↓` 或 `S` | 滑铲（按住） |
 | `鼠标点击` | 跳跃 |
 | `ESC` | 返回主菜单 |
@@ -49,8 +54,46 @@
 | 按键 | 模式 |
 |-----|------|
 | `E` | 无尽模式 - 无限跑酷，挑战高分 |
-| `L` | 关卡模式 - 挑战预设关卡 |
-| `T` | 关卡编辑器 - 可视化编辑 |
+| `T` | 关卡编辑器 - 可视化编辑关卡 |
+| `R` | 关卡仓库 - 浏览和游玩本地关卡 |
+
+### 游戏结束/胜利后
+
+| 按键 | 功能 |
+|-----|------|
+| `回车` | 重新开始 |
+| `ESC` | 返回主菜单 |
+
+## 关卡仓库系统
+
+### 使用方法
+
+1. 在主菜单按 `R` 打开关卡仓库面板
+2. 点击"选择关卡文件夹"，选择包含 `.json` 关卡文件的文件夹
+3. 仓库会自动扫描所有 JSON 文件并列出关卡
+4. 点击关卡旁的 ▶ 按钮即可游玩
+5. 仓库路径会自动记忆，下次打开游戏无需重新选择
+
+### 关卡文件格式
+
+```json
+{
+  "meta": {
+    "name": "关卡名称",
+    "author": "作者",
+    "version": "1.0"
+  },
+  "config": {
+    "baseSpeed": 5,
+    "gravity": 1.2,
+    "spawnOffset": 600
+  },
+  "timeline": [
+    { "time": 1500, "type": "low", "xOffset": 0 },
+    { "time": 3000, "type": "air", "xOffset": 0 }
+  ]
+}
+```
 
 ## 关卡编辑器
 
@@ -62,58 +105,19 @@
    - **拖拽事件块** - 调整障碍时间（带 100ms 吸附）
    - **点击事件块** - 选中编辑属性
 3. 控制按钮：
-   - `▶ Play` - 播放时间轴
-   - `+ low` / `+ air` - 在当前时间添加障碍
+   - `+ low` / `+ air` - 添加障碍（同时设置默认类型）
    - `Delete` - 删除选中障碍
-   - `Export JSON` - 导出关卡
+   - `保存关卡` - 保存到仓库（需先选择仓库）或导出 JSON
    - `Playtest` - 测试运行关卡
 
-### 导出格式
+### 编辑器快捷键
 
-按 `P` 后，会输出完整的 Level JSON 格式：
-
-```json
-{
-  "meta": {
-    "name": "自定义关卡",
-    "author": "player",
-    "version": 1
-  },
-  "config": {
-    "baseSpeed": 6,
-    "gravity": 1.2,
-    "spawnOffset": 300
-  },
-  "timeline": [
-    { "time": 1200, "type": "low", "xOffset": 0 },
-    { "time": 2800, "type": "air", "xOffset": 0 }
-  ]
-}
-```
-
-### 加载自制关卡
-
-**方法1：修改示例关卡（快速测试）**
-编辑 `src/core/Game.js` 中的 `createExampleLevel()` 方法，粘贴你的 JSON。
-
-**方法2：创建关卡文件（推荐）**
-1. 在 `levels/` 目录创建 `.json` 文件
-2. 粘贴导出的关卡数据
-3. 实现文件加载器（后续版本支持）
-
-### Level 数据结构
-
-| 字段 | 说明 |
+| 按键 | 功能 |
 |-----|------|
-| `meta.name` | 关卡名称 |
-| `meta.author` | 作者 |
-| `meta.version` | 数据版本 |
-| `config.baseSpeed` | 初始速度 |
-| `config.gravity` | 重力系数 |
-| `config.spawnOffset` | 生成提前量 |
-| `timeline[].time` | 触发时间（毫秒） |
-| `timeline[].type` | 障碍类型：low/air |
-| `timeline[].xOffset` | 位置偏移（可选） |
+| `1` | 设置默认类型为 low（点击时间轴添加 low） |
+| `2` | 设置默认类型为 air（点击时间轴添加 air） |
+| `Delete` | 删除选中障碍 |
+| `鼠标滚轮` | 缩放时间轴 |
 
 ## 构建说明
 
@@ -153,15 +157,17 @@ npm run build:portable
 minimal-endless-runner/
 ├── src/
 │   ├── core/           # 核心系统
-│   │   ├── Constants.js    # 游戏常量
-│   │   ├── Level.js        # 关卡数据结构
-│   │   ├── Game.js         # 主游戏逻辑
-│   │   ├── Input.js        # 输入处理
-│   │   └── Time.js         # 时间管理
+│   │   ├── Constants.js        # 游戏常量
+│   │   ├── Level.js            # 关卡数据结构
+│   │   ├── LevelRepository.js  # 关卡仓库管理
+│   │   ├── LevelLoader.js      # 关卡验证与加载
+│   │   ├── Game.js             # 主游戏逻辑
+│   │   ├── Input.js            # 输入处理
+│   │   └── Time.js             # 时间管理
 │   ├── entities/       # 游戏实体
-│   │   ├── Player.js       # 玩家角色
-│   │   ├── Obstacle.js     # 障碍物
-│   │   └── ObstacleFactory.js # 障碍工厂
+│   │   ├── Player.js           # 玩家角色
+│   │   ├── Obstacle.js         # 障碍物
+│   │   └── ObstacleFactory.js  # 障碍工厂
 │   ├── systems/        # 游戏系统
 │   │   ├── ParticleSystem.js   # 粒子系统
 │   │   ├── ObstacleManager.js  # 障碍管理
@@ -171,12 +177,16 @@ minimal-endless-runner/
 │   │   ├── Editor.js           # 编辑器核心
 │   │   ├── Timeline.js         # 时间轴可视化
 │   │   └── Inspector.js        # 属性检查器
-│   └── render/         # 渲染相关
-│       └── Renderer.js     # 渲染器
-├── levels/             # 关卡仓库
-│   └── level1.json     # 示例关卡
+│   ├── ui/             # UI 组件
+│   │   └── LevelSelectView.js  # 关卡选择界面
+│   ├── render/         # 渲染相关
+│   │   └── Renderer.js         # 渲染器
+│   └── game.js         # 游戏入口
+├── levels/             # 示例关卡
+│   └── level1.json
 ├── index.html          # 游戏界面
 ├── main.js             # Electron 主进程
+├── preload.js          # Electron 预加载脚本
 ├── package.json        # 项目配置
 └── README.md           # 本文件
 ```
@@ -187,6 +197,8 @@ minimal-endless-runner/
 - 对象池技术管理粒子，减少垃圾回收
 - 优化碰撞检测
 - 模块化 ES6 架构，便于维护扩展
+- Electron IPC 安全通信（contextIsolation + preload）
+- localStorage 持久化用户设置
 
 ## 开源协议
 

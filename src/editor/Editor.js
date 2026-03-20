@@ -97,7 +97,7 @@ export class Editor {
     document.getElementById('btnSetDuration').addEventListener('click', () => {
       const input = document.getElementById('edDurationInput');
       const seconds = parseInt(input.value, 10);
-      if (seconds >= 5 && seconds <= 60) {
+      if (seconds >= 5 && seconds <= 300) {
         this.setDuration(seconds * 1000);
       }
     });
@@ -135,7 +135,7 @@ export class Editor {
   
   // 设置关卡总时长
   setDuration(duration) {
-    this.state.duration = Math.max(5000, Math.min(60000, duration)); // 限制 5-60 秒
+    this.state.duration = Math.max(5000, Math.min(300000, duration)); // 限制 5-300 秒（5分钟）
     this.timeline.renderGrid();
     this.timeline.render();
     this.updateInfo();
