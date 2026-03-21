@@ -21,7 +21,8 @@ export function createEmptyLevel(name = 'New Level', author = 'unknown') {
       baseSpeed: 5,          // 稍微降低默认速度，便于精确计算
       gravity: 1.2,
       spawnOffset: 600,      // 生成提前量：确保有足够时间滑入
-      preloadTime: 2000      // 备用预加载时间
+      preloadTime: 2000,     // 备用预加载时间
+      timeShift: 0           // 整体后移偏移量（毫秒）
     },
     timeline: []
   };

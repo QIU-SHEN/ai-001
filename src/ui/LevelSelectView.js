@@ -100,6 +100,13 @@ export class LevelSelectView {
       // 验证关卡
       LevelLoader.validate(data);
       
+      // 如果有音频，将相对路径转换为绝对路径
+      if (data.audio && data.audio.file) {
+        const levelDir = level.path.substring(0, level.path.lastIndexOf('\\') + 1) || 
+                         level.path.substring(0, level.path.lastIndexOf('/') + 1);
+        data.audio.file = levelDir + data.audio.file;
+      }
+      
       // 调用游戏加载
       this.game.loadLevel(data);
       this.game.startLevel();

@@ -144,6 +144,33 @@ async function saveLevel() {
         createdAt: new Date().toISOString()
       };
 
+      // 如果有音频，保存音频文件到仓库
+      if (levelData.audio && window.audioPlayer && window.audioPlayer.file) {
+        try {
+          const audioFileName = name.replace(/[<>:"/\\|?*]/g, '_') + '_audio' + 
+                                window.audioPlayer.fileName.substring(window.audioPlayer.fileName.lastIndexOf('.'));
+          
+          // 读取音频文件为 ArrayBuffer
+          const arrayBuffer = await window.audioPlayer.file.arrayBuffer();
+          
+          // 保存音频文件
+          await window.electronAPI.saveAudioFile(window.currentRepo.folderPath, audioFileName, arrayBuffer);
+          
+          // 更新音频路径为相对路径
+          levelData.audio.file = audioFileName;
+          delete levelData._audioUrl;
+          
+          console.log('[saveLevel] 音频文件已保存:', audioFileName);
+        } catch (audioErr) {
+          console.error('[saveLevel] 保存音频文件失败:', audioErr);
+          alert('警告: 音频文件保存失败，关卡将不包含音频');
+          delete levelData.audio;
+        }
+      } else {
+        delete levelData.audio;
+        delete levelData._audioUrl;
+      }
+
       const success = await window.currentRepo.saveLevel(name, levelData);
       if (success) {
         alert('关卡已保存到仓库！');
@@ -200,6 +227,8 @@ function initAudioControl() {
   const timeDisplay = document.getElementById('timeDisplay');
   const fileNameDisplay = document.getElementById('audioFileName');
   const clearBtn = document.getElementById('clearBeatsBtn');
+  const progressBar = document.getElementById('audioProgressBar');
+  const progressFill = document.getElementById('audioProgressFill');
   
   // 创建打点记录器
   const recorder = new BeatRecorder(audioPlayer);
@@ -237,41 +266,84 @@ function initAudioControl() {
     updatePlayButton();
   };
   
-  // 清空打点按钮
+  // 一键清空按钮 - 删除编辑器中所有障碍
   clearBtn.onclick = () => {
-    if (confirm('确定要清空所有打点事件吗？')) {
-      recorder.clear();
+    if (game.editor) {
+      game.editor.state.events = [];
+      game.editor.state.selectedEventId = null;
+      game.editor.timeline.render();
+      game.editor.updateInfo();
+      console.log('[Editor] 已清空所有障碍');
     }
   };
   
-  // 键盘打点（只在编辑器模式下有效）
+  // 键盘添加障碍（只在编辑器模式下有效）
   document.addEventListener('keydown', (e) => {
     // 只在编辑器模式下响应
-    if (!game.showEditorUI) return;
+    if (!game.showEditorUI || !game.editor) return;
     
-    // 空格键 - 记录 low
+    // 空格键 - 添加 low 障碍
     if (e.code === 'Space') {
-      e.preventDefault(); // 防止页面滚动
-      const event = recorder.recordBeat('low');
-      if (event) {
-        console.log('[Beat] 空格打点:', event.time + 'ms');
-      }
+      e.preventDefault();
+      
+      const time = audioPlayer.getCurrentTime();
+      const event = {
+        id: 'e' + Date.now() + Math.random().toString(36).substr(2, 5),
+        time: Math.floor(time),
+        type: 'low',
+        xOffset: 0
+      };
+      
+      game.editor.addEvent(event);
+      console.log('[Editor] 空格添加 low 障碍:', event.time + 'ms');
     }
     
-    // S键 - 记录 air
+    // S键 - 添加 air 障碍
     if (e.code === 'KeyS') {
       e.preventDefault();
-      const event = recorder.recordBeat('air');
-      if (event) {
-        console.log('[Beat] S键打点:', event.time + 'ms');
-      }
+      
+      const time = audioPlayer.getCurrentTime();
+      const event = {
+        id: 'e' + Date.now() + Math.random().toString(36).substr(2, 5),
+        time: Math.floor(time),
+        type: 'air',
+        xOffset: 0
+      };
+      
+      game.editor.addEvent(event);
+      console.log('[Editor] S键添加 air 障碍:', event.time + 'ms');
     }
   });
   
-  // 更新时间显示
+  // 更新时间显示和进度条
   function updateTime() {
-    const time = audioPlayer.getCurrentTime();
-    timeDisplay.textContent = Math.floor(time) + ' ms';
+    let time, duration;
+    
+    // 判断当前使用哪个音频源
+    if (game.showEditorUI) {
+      // 编辑器模式：使用编辑器音频播放器
+      time = audioPlayer.getCurrentTime();
+      duration = audioPlayer.getDuration();
+      timeDisplay.textContent = Math.floor(time) + ' ms';
+    } else if (game.levelAudio && game.useAudioTime) {
+      // 关卡模式：使用关卡背景音乐
+      time = game.levelTime;
+      duration = game.levelAudio.duration * 1000;
+      timeDisplay.textContent = Math.floor(time) + ' ms';
+    } else {
+      // 无尽模式或其他：不显示进度
+      audioUpdateId = requestAnimationFrame(updateTime);
+      return;
+    }
+    
+    // 更新进度条（拖动时不覆盖）
+    if (duration > 0 && !isDraggingProgress) {
+      const percent = Math.min(100, Math.max(0, (time / duration) * 100));
+      progressBar.max = duration;
+      progressBar.value = time;
+      progressFill.style.width = percent + '%';
+    }
+    
     audioUpdateId = requestAnimationFrame(updateTime);
   }
   
@@ -284,6 +356,53 @@ function initAudioControl() {
   audioPlayer.onEnded = () => {
     updatePlayButton();
   };
+  
+  // 进度条拖动（只在编辑器模式启用）
+  let isDraggingProgress = false;
+  
+  progressBar.addEventListener('mousedown', (e) => {
+    if (!game.showEditorUI) {
+      e.preventDefault();
+      return;
+    }
+    isDraggingProgress = true;
+  });
+  
+  progressBar.addEventListener('mouseup', () => {
+    isDraggingProgress = false;
+  });
+  
+  progressBar.addEventListener('mouseleave', () => {
+    isDraggingProgress = false;
+  });
+  
+  // 拖动过程中只更新UI，不跳转音频
+  progressBar.addEventListener('input', () => {
+    if (!game.showEditorUI) return;
+    
+    const time = parseInt(progressBar.value, 10);
+    const duration = audioPlayer.getDuration();
+    
+    // 同步更新填充条
+    if (duration > 0) {
+      progressFill.style.width = (time / duration) * 100 + '%';
+    }
+  });
+  
+  // 拖动结束最终确认，跳转音频
+  progressBar.addEventListener('change', () => {
+    const time = parseInt(progressBar.value, 10);
+    
+    // 跳转音频
+    if (audioPlayer) {
+      audioPlayer.seek(time);
+    }
+    
+    // 延迟清除标志，确保 seek 生效
+    setTimeout(() => {
+      isDraggingProgress = false;
+    }, 100);
+  });
   
   // 开始时间更新循环
   updateTime();

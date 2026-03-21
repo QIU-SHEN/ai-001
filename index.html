@@ -585,7 +585,13 @@
     <span id="audioFileName">未选择文件</span>
     <button id="playBtn" disabled>播放 / 暂停</button>
     <span id="timeDisplay">0 ms</span>
-    <button id="clearBeatsBtn">清空打点</button>
+    <button id="clearBeatsBtn" >一键清空</button>
+  </div>
+  
+  <!-- 音频进度条（绿色细长，固定在底部） -->
+  <div id="audioProgressContainer" style="position: fixed; bottom: 0; left: 0; right: 0; height: 3px; background: #333; z-index: 999;">
+    <div id="audioProgressFill" style="width: 0%; height: 100%; background: #2ecc71; transition: width 0.1s linear;"></div>
+    <input type="range" id="audioProgressBar" min="0" max="100" value="0" style="position: absolute; top: -6px; left: 0; width: 100%; height: 15px; opacity: 0; cursor: pointer;">
   </div>
   
 
@@ -618,6 +624,11 @@
         Duration: 
         <input type="number" id="edDurationInput" value="10" min="5" max="300" style="width: 50px; background: #222; border: 1px solid #444; color: #fff; padding: 2px 5px; font-family: monospace;">s
         <button id="btnSetDuration" style="background: #333; border: 1px solid #555; color: #fff; padding: 2px 8px; font-size: 10px; cursor: pointer;">Set</button>
+      </div>
+      <div class="info-row">
+        Shift: 
+        <input type="number" id="edTimeShiftInput" value="0" min="-1000" max="1000" step="50" style="width: 60px; background: #222; border: 1px solid #444; color: #fff; padding: 2px 5px; font-family: monospace;">ms
+        <button id="btnSetTimeShift" style="background: #333; border: 1px solid #555; color: #fff; padding: 2px 8px; font-size: 10px; cursor: pointer;">Set</button>
       </div>
       <div class="info-row">Events: <span id="edEventCount">0</span></div>
       <div class="info-row">Scale: <span id="edScale">100</span>px/s</div>

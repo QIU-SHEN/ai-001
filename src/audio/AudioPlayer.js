@@ -48,6 +48,10 @@ export class AudioPlayer {
       URL.revokeObjectURL(this.audioUrl);
     }
     
+    // 保存文件信息
+    this.file = file;
+    this.fileName = file.name;
+    
     // 创建新的对象 URL
     this.audioUrl = URL.createObjectURL(file);
     this.audio.src = this.audioUrl;

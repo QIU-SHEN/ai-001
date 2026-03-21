@@ -12,7 +12,8 @@ export class Editor {
     this.state = {
       duration: 10000, // ms
       events: [],
-      selectedEventId: null
+      selectedEventId: null,
+      timeShift: 0     // 整体后移偏移量（毫秒）
     };
     
     this.defaultType = 'low';
@@ -105,6 +106,14 @@ export class Editor {
       if (seconds >= 5 && seconds <= 300) {
         this.setDuration(seconds * 1000);
       }
+    });
+    
+    // 整体后移设置
+    document.getElementById('btnSetTimeShift').addEventListener('click', () => {
+      const input = document.getElementById('edTimeShiftInput');
+      const ms = parseInt(input.value, 10) || 0;
+      this.state.timeShift = Math.max(-2000, Math.min(2000, ms));
+      console.log('[Editor] 设置整体后移:', this.state.timeShift, 'ms');
     });
     
     // 键盘快捷键
@@ -266,7 +275,8 @@ export class Editor {
         baseSpeed: 5,        // 默认速度 5px/帧
         gravity: 1.2,
         spawnOffset: 600,    // 600px 提前量，确保平滑滑入
-        preloadTime: 2000
+        preloadTime: 2000,
+        timeShift: this.state.timeShift || 0  // 整体后移偏移量
       },
       timeline: this.state.events.map(e => ({
         time: e.time,
@@ -275,6 +285,15 @@ export class Editor {
         // 注意：不包含 spawned 标记，这是运行时状态
       }))
     };
+    
+    // 添加音频信息（如果已加载）
+    if (this.audioPlayer && this.audioPlayer.fileName) {
+      levelData.audio = {
+        file: this.audioPlayer.fileName,
+        offset: 0
+      };
+      levelData._audioUrl = this.audioPlayer.audioUrl;
+    }
     
     const json = JSON.stringify(levelData, null, 2);
     console.log('[Editor] 导出关卡：');

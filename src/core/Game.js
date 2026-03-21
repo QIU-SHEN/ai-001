@@ -53,6 +53,12 @@ export class Game {
     this.levelTime = 0;            // 关卡内时间（毫秒）
     this.timelineIndex = 0;        // 时间轴索引
     
+    // ===== 音频同步系统 =====
+    this.levelAudio = null;        // 关卡背景音乐
+    this.audioReady = false;       // 音频是否准备好
+    this.useAudioTime = false;     // 是否使用音频驱动时间
+    this.audioOffset = 0;          // 音频起始偏移（毫秒）
+    
     // Combo 系统
     this.comboCount = 0;
     this.comboTier = 0;
@@ -83,10 +89,60 @@ export class Game {
       return false;
     }
     
+    // 清理旧音频
+    this.cleanupAudio();
+    
     this.currentLevel = levelData;
     this.mode = GAME_MODE.LEVEL;
     this.showEditorUI = false; // 退出编辑器模式
+    
+    // 加载关卡音频（如果存在）
+    if (levelData.audio && levelData.audio.file) {
+      // 传递 _audioUrl（playtest 时使用）
+      const audioData = {
+        ...levelData.audio,
+        _audioUrl: levelData._audioUrl
+      };
+      this.loadAudio(audioData);
+    } else {
+      this.useAudioTime = false;
+    }
+    
     return true;
+  }
+  
+  // 加载关卡音频
+  loadAudio(audioData) {
+    this.useAudioTime = true;
+    this.audioReady = false;
+    this.audioOffset = audioData.offset || 0;
+    
+    const audioSrc = audioData._audioUrl || audioData.file;
+    this.levelAudio = new Audio(audioSrc);
+    this.levelAudio.preload = 'auto';
+    
+    this.levelAudio.oncanplay = () => {
+      this.audioReady = true;
+      console.log('[Audio] 关卡音频已准备好:', audioData.file);
+    };
+    
+    this.levelAudio.onerror = () => {
+      console.error('[Audio] 音频加载失败:', audioData.file);
+      this.useAudioTime = false;
+      this.audioReady = false;
+    };
+  }
+  
+  // 清理音频资源
+  cleanupAudio() {
+    if (this.levelAudio) {
+      this.levelAudio.pause();
+      this.levelAudio.src = '';
+      this.levelAudio = null;
+    }
+    this.audioReady = false;
+    this.useAudioTime = false;
+    this.audioOffset = 0;
   }
   
   startLevel() {
@@ -96,8 +152,45 @@ export class Game {
     }
     
     this.resetLevel();
+    
+    // 音频驱动模式：检查音频是否准备好
+    if (this.useAudioTime && !this.audioReady) {
+      console.warn('[Audio] 音频尚未准备好，延迟启动...');
+      const checkAudio = () => {
+        if (this.audioReady) {
+          this._startAudioPlayback();
+          this.state = 'running';
+        } else if (this.levelAudio && this.levelAudio.error) {
+          console.warn('[Audio] 音频加载失败，使用普通时间模式');
+          this.useAudioTime = false;
+          this.state = 'running';
+        } else {
+          setTimeout(checkAudio, 50);
+        }
+      };
+      setTimeout(checkAudio, 50);
+      return true;
+    }
+    
+    // 普通模式或音频已准备好
+    if (this.useAudioTime && this.audioReady) {
+      this._startAudioPlayback();
+    }
+    
     this.state = 'running';
     return true;
+  }
+  
+  // 开始播放音频
+  _startAudioPlayback() {
+    if (!this.levelAudio || !this.audioReady) return;
+    if (!this.levelAudio.paused) return;
+    
+    this.levelAudio.currentTime = this.audioOffset / 1000;
+    this.levelAudio.play().catch(err => {
+      console.warn('[Audio] 音频播放失败:', err.message);
+      this.useAudioTime = false;
+    });
   }
   
   resetLevel() {
@@ -138,6 +231,11 @@ export class Game {
   
   stopLevel() {
     this.state = 'start';
+    // 停止关卡音频
+    if (this.levelAudio) {
+      this.levelAudio.pause();
+      this.levelAudio.currentTime = 0;
+    }
     // 隐藏音频面板
     if (window.showAudioPanel) window.showAudioPanel(false);
   }
@@ -146,6 +244,12 @@ export class Game {
   
   start() {
     this.audio.init();
+    
+    // 重玩时重置音频到开头
+    if (this.levelAudio && this.useAudioTime) {
+      this.levelAudio.currentTime = this.audioOffset / 1000;
+    }
+    
     this.startLevel();
   }
   
@@ -154,6 +258,11 @@ export class Game {
   gameOver() {
     this.state = 'gameover';
     this.audio.playHit();
+    
+    // 停止关卡背景音乐
+    if (this.levelAudio && !this.levelAudio.paused) {
+      this.levelAudio.pause();
+    }
     this.particles.spawnExplosion(
       this.player.x + this.player.width / 2,
       this.player.y + this.player.height / 2
@@ -185,25 +294,25 @@ export class Game {
     const config = this.currentLevel.config;
     
     // 计算预加载提前时间（根据速度和距离）
-    const spawnOffset = config.spawnOffset || 500; // 像素
-    const preloadTime = config.preloadTime || 2000; // 毫秒（备用）
+    const spawnOffset = config.spawnOffset || 500;
+    const preloadTime = config.preloadTime || 2000;
+    const timeShift = config.timeShift || 0;  // 整体后移偏移量
     const speed = this.currentSpeed;
     
     // 基于距离的预加载时间
-    // speed 是每帧像素数 @60fps，所以每秒速度是 speed * 60
     const speedPerSecond = speed * 60;
-    // 计算障碍从屏幕外移动到玩家位置所需的时间
-    // spawnOffset 是生成点到玩家的距离
     const timeToReachPlayer = (spawnOffset / speedPerSecond) * 1000;
-    // 提前生成时间 = 移动时间
     const timeAhead = timeToReachPlayer;
     
     // 按时间顺序生成障碍（带预加载）
     while (this.timelineIndex < timeline.length) {
       const item = timeline[this.timelineIndex];
       
-      // 提前生成：在障碍预定时间之前 timeAhead 毫秒生成
-      const spawnTriggerTime = item.time - timeAhead;
+      // 应用整体后移：障碍实际到达时间 = 打点时间 + timeShift
+      const actualReachTime = item.time + timeShift;
+      
+      // 提前生成：在障碍实际到达时间之前 timeAhead 毫秒生成
+      const spawnTriggerTime = actualReachTime - timeAhead;
       
       if (this.levelTime >= spawnTriggerTime && !item.spawned) {
         // 生成位置：屏幕右侧外
@@ -328,9 +437,14 @@ export class Game {
         return; // 跳过游戏更新
       }
       
-      // 正常游戏模式更新
-      // 更新关卡时间
-      this.levelTime += deltaTime * timeScale;
+      // ===== 时间同步核心 =====
+      // 音频驱动模式：时间完全由音频决定
+      if (this.useAudioTime && this.audioReady && this.levelAudio) {
+        this.levelTime = this.levelAudio.currentTime * 1000;
+      } else {
+        // 普通模式：使用 deltaTime
+        this.levelTime += deltaTime * timeScale;
+      }
       
       // Timeline 驱动生成
       this.processTimeline(deltaTime * timeScale);
@@ -393,19 +507,22 @@ export class Game {
     
     // ESC 返回菜单
     if (this.input.backToMenu) {
-      // Playtest 模式下返回主菜单
-      if (this.previousEditorState && this.state === 'running') {
-        this.stopLevel();
-        this.previousEditorState = null; // 清除编辑器状态
+      // Playtest 模式下：ESC 完全禁用（只能用 R 键返回编辑器）
+      if (this.previousEditorState) {
+        console.log('[Game] Playtest 模式下请按 R 键返回编辑器');
       }
-      // 游戏结束/胜利状态返回菜单
+      // 编辑器模式下：ESC 返回首页并清空编辑器
+      else if (this.showEditorUI) {
+        this.cleanupEditorAndReturnToMenu();
+      }
+      // 其他游戏结束/胜利状态返回菜单
       else if (this.state === 'gameover' || this.state === 'win') {
         this.stopLevel();
       }
       this.input.backToMenu = false;
     }
     
-    // R 键返回编辑器（从 Playtest 返回）
+    // R 键返回编辑器（Playtest 唯一返回方式）
     if (this.input.returnToEditor && this.previousEditorState) {
       this.returnToEditor();
       this.input.returnToEditor = false;
@@ -436,6 +553,7 @@ export class Game {
   // 打开完整编辑器
   openEditor() {
     this.audio.init();
+    this.state = 'start';  // 确保状态正确
     this.showEditorUI = true;
     this.mode = GAME_MODE.EDITOR;
     
@@ -485,6 +603,9 @@ export class Game {
     // 停止游戏
     this.stopLevel();
     
+    // 重置游戏状态为 start（防止编辑器模式被误判为 running）
+    this.state = 'start';
+    
     // 恢复编辑器状态
     this.showEditorUI = true;
     this.mode = GAME_MODE.EDITOR;
@@ -506,7 +627,48 @@ export class Game {
     // 恢复显示（由 editor.init() 处理）
     document.getElementById('editorUI').classList.add('active');
     
+    // 清空 Playtest 状态，允许 ESC 返回首页
+    this.previousEditorState = null;
+    
     console.log('[Editor] 返回编辑器 - 继续编辑');
+  }
+  
+  // 清理编辑器并返回主菜单（ESC 在编辑器模式下调用）
+  cleanupEditorAndReturnToMenu() {
+    // 停止音频同步
+    if (this.editor) {
+      this.editor.stopAudioSync();
+      this.editor.destroy();
+      this.editor = null;
+    }
+    
+    // 清理编辑器状态
+    this.previousEditorState = null;
+    this.showEditorUI = false;
+    
+    // 停止游戏
+    this.stopLevel();
+    
+    // 重置游戏模式
+    this.mode = GAME_MODE.ENDLESS;
+    this.currentLevel = null;
+    
+    // 清理音频
+    if (window.audioPlayer) {
+      window.audioPlayer.destroy();
+    }
+    
+    // 清空打点记录器
+    if (window.beatRecorder) {
+      window.beatRecorder.clear();
+    }
+    
+    // 重置 UI
+    const editorUI = document.getElementById('editorUI');
+    if (editorUI) editorUI.classList.remove('active');
+    if (window.showAudioPanel) window.showAudioPanel(false);
+    
+    console.log('[Game] 已清理编辑器并返回主菜单');
   }
   
   draw() {
